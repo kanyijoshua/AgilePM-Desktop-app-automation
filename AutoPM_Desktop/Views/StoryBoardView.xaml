@@ -1,0 +1,231 @@
+<UserControl x:Class="AutoPM_Desktop.Views.StoryBoardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="330"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: user stories assigned to me, across all my projects -->
+        <Border Style="{StaticResource CardBorder}" Padding="0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="16,14,16,10">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="⟳" Style="{StaticResource GhostButton}" Padding="8,2"
+                                ToolTip="Reload my user stories" Click="RefreshStories_Click"/>
+                        <TextBlock Text="My user stories" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock x:Name="StoriesSummaryText" Text="Assigned to you in the active project" FontSize="11.5"
+                               Foreground="#64748B" Margin="0,2,0,10" TextWrapping="Wrap"/>
+                    <TextBox x:Name="StorySearchBox" materialDesign:HintAssist.Hint="Search stories, projects or epics"
+                             materialDesign:TextFieldAssist.HasClearButton="True" TextChanged="StorySearchBox_TextChanged"/>
+                    <WrapPanel Margin="0,10,0,0">
+                        <CheckBox x:Name="NoTasksOnlyCheck" Content="Only stories without tasks" Margin="0,0,14,4"
+                                  ToolTip="Stories assigned to you that nobody has broken into tasks yet"
+                                  Checked="StoryFilter_Changed" Unchecked="StoryFilter_Changed"/>
+                        <CheckBox x:Name="AllProjectsCheck" Content="All my projects" Margin="0,0,0,4"
+                                  ToolTip="Off: only the active project (top of the sidebar)"
+                                  Checked="AllProjects_Changed" Unchecked="AllProjects_Changed"/>
+                    </WrapPanel>
+                </StackPanel>
+
+                <Grid>
+                    <ListBox x:Name="StoryList" BorderThickness="0" Padding="8,0,8,8"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="StoryList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                <Setter Property="Padding" Value="10,9"/>
+                                <Setter Property="Margin" Value="0,0,0,2"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="#64748B" TextWrapping="Wrap" Margin="0,2,0,5"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ContentPresenter Content="{Binding Story.Status}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                        <TextBlock Text="{Binding Story.Priority, StringFormat={}{0} priority}" FontSize="11" Foreground="#64748B"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{Binding TaskCountText}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding TaskCountBrush}"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock x:Name="NoStoriesText" Text="No user stories are assigned to you yet." Visibility="Collapsed"
+                               Foreground="#94A3B8" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="16,24" TextWrapping="Wrap"/>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- Right: the selected story's tasks as a board -->
+        <Border Grid.Column="2" Style="{StaticResource CardBorder}" Padding="0">
+            <Grid>
+                <DockPanel x:Name="BoardPanel" Margin="16,14,16,12" Visibility="Collapsed">
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock x:Name="StoryTitleText" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="StorySubtitleText" FontSize="12" Foreground="#64748B" Margin="0,2,0,12" TextWrapping="Wrap"/>
+
+                        <!-- Quick add: type a title and press Enter -->
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="86"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="NewTaskTitleBox" materialDesign:HintAssist.Hint="New task title, then press Enter"
+                                         KeyDown="NewTaskTitleBox_KeyDown"/>
+                                <TextBox Grid.Column="2" x:Name="NewTaskHoursBox" materialDesign:HintAssist.Hint="Hours"
+                                         ToolTip="Planned hours (optional)" KeyDown="NewTaskTitleBox_KeyDown"/>
+                                <DatePicker Grid.Column="4" x:Name="NewTaskDuePicker" materialDesign:HintAssist.Hint="Due date"
+                                            ToolTip="Optional; defaults to 7 days from today" BorderBrush="#CBD5E1" Background="White"
+                                            Style="{StaticResource MaterialDesignOutlinedDatePicker}" Padding="10,7" FontSize="13"
+                                            materialDesign:TextFieldAssist.TextFieldCornerRadius="8" VerticalAlignment="Center"/>
+                                <Button Grid.Column="6" x:Name="AddTaskBtn" Content="+ Add task" Style="{StaticResource PrimaryButton}"
+                                        Click="AddTask_Click" ToolTip="Create the task under this story, assigned to you"/>
+                            </Grid>
+                        </Border>
+                        <DockPanel Margin="2,8,0,8">
+                            <Button x:Name="SuggestBtn" DockPanel.Dock="Right" Content="✨ Suggest tasks" Style="{StaticResource GhostButton}"
+                                    Padding="10,3" Margin="10,0,0,0" Click="SuggestTasks_Click"
+                                    ToolTip="Let the AI break this story into tasks from its description and acceptance criteria"/>
+                            <TextBlock FontSize="11.5" Foreground="#64748B" TextWrapping="Wrap" VerticalAlignment="Center"
+                                       Text="New tasks go under this story and its epic, assigned to you. Drag a card to another column (or use its button) to move it; moving to Completed asks for the hours to log."/>
+                        </DockPanel>
+
+                        <!-- Shown when the story has no tasks yet -->
+                        <Border x:Name="NoTasksBanner" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="10"
+                                Padding="12,10" Margin="0,0,0,8" Visibility="Collapsed">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="✨ Suggest tasks with AI" Style="{StaticResource AiButton}"
+                                        Margin="10,0,0,0" Click="SuggestTasks_Click"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="This story has no tasks yet" FontWeight="SemiBold" Foreground="#92400E"/>
+                                    <TextBlock Text="Let the AI break it into tasks from its description and acceptance criteria, or add them above."
+                                               FontSize="11.5" Foreground="#92400E" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- AI-suggested tasks: tick, edit, then create them all at once -->
+                        <Border x:Name="SuggestPanel" Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="10"
+                                Padding="12,10" Margin="0,0,0,8" Visibility="Collapsed">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                                    <TextBlock x:Name="SuggestTitleText" Text="Suggested tasks" FontWeight="SemiBold" Foreground="#5B21B6" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                    <Button x:Name="CreateSuggestedBtn" DockPanel.Dock="Right" Content="Create selected" Style="{StaticResource SuccessButton}"
+                                            Click="CreateSuggested_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Discard" Style="{StaticResource GhostButton}" Margin="0,0,8,0"
+                                            Click="DiscardSuggested_Click"/>
+                                    <TextBlock FontSize="11.5" Foreground="#6D28D9" VerticalAlignment="Center" TextWrapping="Wrap"
+                                               Text="Edit titles and hours, untick what you don't want. They are created assigned to you, due on the date above (or in 7 days)."/>
+                                </DockPanel>
+                                <DataGrid x:Name="SuggestGrid" IsReadOnly="False" CanUserSortColumns="False" RowHeight="34" MaxHeight="220"
+                                          Background="White">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Add" Width="48">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding Create, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              HorizontalAlignment="Center" Click="SuggestCheck_Click"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Task" Binding="{Binding Title, UpdateSourceTrigger=LostFocus}" Width="2*"/>
+                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, UpdateSourceTrigger=LostFocus}" Width="62"/>
+                                        <DataGridTextColumn Header="Priority" Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}" Width="78"/>
+                                        <DataGridTextColumn Header="Note" Binding="{Binding Description}" IsReadOnly="True" Width="1.6*">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#64748B"/>
+                                                    <Setter Property="FontSize" Value="11.5"/>
+                                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- After creating: jump to the next story that still has no tasks -->
+                        <Button x:Name="NextEmptyBtn" Content="Next story without tasks →" Style="{StaticResource SecondaryButton}"
+                                HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="Collapsed" Click="NextEmpty_Click"/>
+                        <ProgressBar x:Name="BusyBar" IsIndeterminate="True" Height="3" Margin="0,0,0,6" Visibility="Hidden"/>
+                    </StackPanel>
+
+                    <ItemsControl x:Name="ColumnsHost">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F1F5F9" BorderBrush="Transparent" BorderThickness="2" CornerRadius="10" Margin="0,0,8,0" Padding="8"
+                                        AllowDrop="True" Tag="{Binding}"
+                                        DragEnter="Column_DragEnter" DragOver="Column_DragOver" DragLeave="Column_DragLeave" Drop="Column_Drop">
+                                    <DockPanel>
+                                        <DockPanel DockPanel.Dock="Top" Margin="4,2,4,8">
+                                            <Border DockPanel.Dock="Right" Background="White" CornerRadius="9" Padding="7,1">
+                                                <TextBlock Text="{Binding Cards.Count}" FontSize="11" FontWeight="SemiBold" Foreground="#475569"/>
+                                            </Border>
+                                            <Ellipse Width="8" Height="8" Fill="{Binding Accent}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="12.5" Foreground="#334155" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding Cards}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="White" CornerRadius="8" Padding="10,9" Margin="0,0,0,8" Cursor="Hand"
+                                                                BorderBrush="#E2E8F0" BorderThickness="1" Tag="{Binding}"
+                                                                PreviewMouseLeftButtonDown="Card_PreviewMouseLeftButtonDown" MouseMove="Card_MouseMove"
+                                                                ToolTip="{Binding Task.Description}">
+                                                            <Border.Effect>
+                                                                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Direction="270" Opacity="0.07" Color="#0F172A"/>
+                                                            </Border.Effect>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Task.Title}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Meta}" FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                                                <TextBlock Text="Overdue" FontSize="11" FontWeight="SemiBold" Foreground="#B91C1C" Margin="0,3,0,0"
+                                                                           Visibility="{Binding Task.IsOverdue, Converter={StaticResource BoolToVisibility}}"/>
+                                                                <Button Content="{Binding NextLabel}" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left"
+                                                                        FontSize="11.5" Padding="10,3" MinHeight="26" Margin="0,8,0,0" Click="CardNext_Click"
+                                                                        Visibility="{Binding HasNext, Converter={StaticResource BoolToVisibility}}"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+
+                <StackPanel x:Name="BoardEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420">
+                    <TextBlock Text="📌" FontSize="34" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Pick one of your user stories" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,8,0,4"/>
+                    <TextBlock Text="Its tasks show up here as a board. Add tasks in one line and drag them between stages."
+                               FontSize="12.5" Foreground="#64748B" TextAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

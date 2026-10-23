@@ -1,0 +1,1099 @@
+<Window x:Class="AutoPM_Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:views="clr-namespace:AutoPM_Desktop.Views"
+        FontFamily="{materialDesign:MaterialDesignFont}"
+        TextElement.Foreground="#0F172A"
+        Title="AgilePM Desktop — Task Management &amp; Automation"
+        Width="1400" Height="860"
+        MinWidth="1100" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBgBrush}"
+        Closing="Window_Closing">
+
+    <Window.InputBindings>
+        <KeyBinding Key="K" Modifiers="Control" Command="{x:Static ApplicationCommands.Find}"/>
+        <KeyBinding Key="F5" Command="{x:Static NavigationCommands.Refresh}"/>
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static ApplicationCommands.Find}" Executed="AskAiShortcut_Executed"/>
+        <CommandBinding Command="{x:Static NavigationCommands.Refresh}" Executed="RefreshShortcut_Executed"/>
+    </Window.CommandBindings>
+
+    <Grid>
+        <!-- Main Workspace Layout -->
+        <Grid x:Name="WorkspaceGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Sidebar -->
+            <Border Grid.Column="0" Background="{StaticResource SidebarBgBrush}" Padding="16,20">
+                <DockPanel LastChildFill="True">
+                    <!-- Brand Header -->
+                    <StackPanel DockPanel.Dock="Top" Margin="4,0,4,20">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="{StaticResource AiGradientBrush}" CornerRadius="9" Width="36" Height="36" Margin="0,0,10,0">
+                                <TextBlock Text="PM" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="AgilePM Desktop" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                <TextBlock Text="Task Automation + AI" Foreground="#94A3B8" FontSize="11.5"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Active Project Quick Selector -->
+                    <Border DockPanel.Dock="Top" Background="#1E293B" CornerRadius="8" Padding="10" Margin="0,0,0,18">
+                        <StackPanel>
+                            <TextBlock Text="ACTIVE PROJECT" Foreground="#94A3B8" FontSize="10.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="GlobalProjectCombo"
+                                      DisplayMemberPath="DisplayLabel"
+                                      SelectedValuePath="Id"
+                                      SelectionChanged="GlobalProjectCombo_SelectionChanged"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Bottom User & Connection Info -->
+                    <Border DockPanel.Dock="Bottom" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="SidebarUserText" Text="Not signed in" Foreground="White" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="SidebarUrlText" Text="https://agilepm.example.com/" Foreground="#94A3B8" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,8"/>
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock Text="Auto-sync" Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <ComboBox x:Name="AutoRefreshCombo" FontSize="11.5" Padding="6,2" SelectionChanged="AutoRefreshCombo_SelectionChanged"
+                                          ToolTip="Refresh Agile PM data in the background and alert on new overdue tasks">
+                                    <ComboBoxItem Content="Off" Tag="0" IsSelected="True"/>
+                                    <ComboBoxItem Content="Every 5 min" Tag="5"/>
+                                    <ComboBoxItem Content="Every 15 min" Tag="15"/>
+                                    <ComboBoxItem Content="Every 30 min" Tag="30"/>
+                                </ComboBox>
+                            </DockPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Refresh All" Style="{StaticResource SecondaryButton}" FontSize="11.5" Padding="6,4" Click="RefreshAll_Click"/>
+                                <Button Grid.Column="2" Content="Sign Out" Style="{StaticResource SecondaryButton}" FontSize="11.5" Padding="6,4" Click="SignOut_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Navigation Menu -->
+                    <StackPanel>
+                        <TextBlock Text="AI WORKSPACE" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,0,0,6"/>
+                        <Button x:Name="NavAiBtn" Content="✨  AI Workspace" Style="{StaticResource NavButton}" Tag="Active" Click="NavAi_Click"
+                                ToolTip="Create tasks, update work and analyse the active project with AI (Ctrl+K)"/>
+
+                        <TextBlock Text="MANUAL VIEWS" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,18,0,6"/>
+                        <Button x:Name="NavDashboardBtn" Content="📊  Dashboard &amp; My Work" Style="{StaticResource NavButton}" Click="NavDashboard_Click"/>
+                        <Button x:Name="NavStoryBoardBtn" Content="📌  My Story Board" Style="{StaticResource NavButton}" Click="NavStoryBoard_Click"
+                                ToolTip="Your user stories: add tasks in one line and drag them between stages"/>
+                        <Button x:Name="NavProjectsBtn" Content="📁  Projects &amp; Team" Style="{StaticResource NavButton}" Click="NavProjects_Click"/>
+                        <Button x:Name="NavEpicsStoriesBtn" Content="🧭  Epics &amp; User Stories" Style="{StaticResource NavButton}" Click="NavEpicsStories_Click"/>
+                        <Button x:Name="NavTasksBtn" Content="✅  Project Tasks &amp; Details" Style="{StaticResource NavButton}" Click="NavTasks_Click"/>
+                        <Button x:Name="NavAutomationBtn" Content="⚡  Automation &amp; Standup" Style="{StaticResource NavButton}" Click="NavAutomation_Click"/>
+                        <Button x:Name="NavActivityBtn" Content="📡  Activity Log" Style="{StaticResource NavButton}" Click="NavActivity_Click"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Right Content Area -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Top Header Bar -->
+                <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrushLight}" BorderThickness="0,0,0,1" Padding="24,14">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                            <Border x:Name="BusyBadge" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="12" Padding="12,4" Margin="0,0,12,0" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal">
+                                    <ProgressBar IsIndeterminate="True" Width="34" Height="4" Margin="0,0,8,0" Foreground="#2563EB" Background="#DBEAFE" BorderThickness="0"/>
+                                    <TextBlock x:Name="BusyText" Text="Working..." Foreground="#1D4ED8" FontSize="12" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="✨ Ask AI" Style="{StaticResource AiButton}" Margin="0,0,8,0" Click="NavAi_Click" ToolTip="Open the AI assistant (Ctrl+K)"/>
+                            <Button Content="+ Quick Task" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="NewTask_Click"/>
+                            <Button Content="⟳ Sync" Style="{StaticResource SecondaryButton}" Click="RefreshAll_Click" ToolTip="Refresh all data (F5)"/>
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock x:Name="PageTitleText" Text="AI Workspace" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock x:Name="PageSubtitleText" Text="Create tasks, update your work and analyse the active project with AI, instead of clicking through Agile PM." FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Main Views Container -->
+                <Grid Grid.Row="1" Margin="22,18,22,12">
+
+                    <!-- ==================== VIEW 1: DASHBOARD & MY WORK ==================== -->
+                    <Grid x:Name="DashboardView" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- KPI Summary Cards -->
+                        <UniformGrid Grid.Row="0" Columns="6" Margin="0,0,0,16">
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#CBD5E1" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="MY ASSIGNED TASKS" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                                    <TextBlock x:Name="StatTotalTasks" Text="0" FontSize="26" FontWeight="Bold" Foreground="#0F172A" Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="StatProjectsCount" Text="Across 0 projects" FontSize="11.5" Foreground="#64748B"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#2563EB" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="IN PROGRESS" FontSize="11" FontWeight="Bold" Foreground="#2563EB"/>
+                                    <TextBlock x:Name="StatInProgress" Text="0" FontSize="26" FontWeight="Bold" Foreground="#2563EB" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Active tasks" FontSize="11.5" Foreground="#64748B"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#D97706" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="PLANNED / TO DO" FontSize="11" FontWeight="Bold" Foreground="#D97706"/>
+                                    <TextBlock x:Name="StatPlanned" Text="0" FontSize="26" FontWeight="Bold" Foreground="#D97706" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Ready to start" FontSize="11.5" Foreground="#64748B"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#DC2626" Margin="0,0,10,0" Cursor="Hand" MouseLeftButtonUp="OverdueCard_Click"
+                                    ToolTip="Show only overdue tasks">
+                                <StackPanel>
+                                    <TextBlock Text="OVERDUE" FontSize="11" FontWeight="Bold" Foreground="#DC2626"/>
+                                    <TextBlock x:Name="StatOverdue" Text="0" FontSize="26" FontWeight="Bold" Foreground="#DC2626" Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="StatOverdueHint" Text="Nothing late" FontSize="11.5" Foreground="#64748B"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#059669" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="COMPLETED" FontSize="11" FontWeight="Bold" Foreground="#059669"/>
+                                    <TextBlock x:Name="StatCompleted" Text="0" FontSize="26" FontWeight="Bold" Foreground="#059669" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Finished work" FontSize="11.5" Foreground="#64748B"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource KpiCard}" BorderBrush="#7C3AED">
+                                <StackPanel>
+                                    <TextBlock Text="PLANNED EFFORT" FontSize="11" FontWeight="Bold" Foreground="#7C3AED"/>
+                                    <TextBlock x:Name="StatPlannedHours" Text="0 hrs" FontSize="26" FontWeight="Bold" Foreground="#0F172A" Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="StatDashboardRaw" Text="Synced with Agile PM" FontSize="11.5" Foreground="#64748B" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Filter & Quick Action Toolbar -->
+                        <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="14,10" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel>
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                        <Button Content="⬇ Export CSV" Style="{StaticResource GhostButton}" Margin="0,0,4,0" Click="ExportMyWork_Click"/>
+                                        <Button Content="🔍 Inspect &amp; Comments" Style="{StaticResource SecondaryButton}" Click="MyWorkInspect_Click"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox x:Name="MyWorkSearchBox" Width="230" Margin="0,0,12,0" TextChanged="MyWorkFilter_Changed" ToolTip="Search by title, project or story"/>
+                                        <ComboBox x:Name="MyWorkStageFilter" Width="140" Margin="0,0,12,0" SelectionChanged="MyWorkStageFilter_Changed">
+                                            <ComboBoxItem Content="All Stages" IsSelected="True"/>
+                                            <ComboBoxItem Content="Overdue"/>
+                                            <ComboBoxItem Content="Planned"/>
+                                            <ComboBoxItem Content="InProgress"/>
+                                            <ComboBoxItem Content="Returned"/>
+                                            <ComboBoxItem Content="Completed"/>
+                                            <ComboBoxItem Content="Closed"/>
+                                        </ComboBox>
+                                        <CheckBox x:Name="IncludeCompletedCheck" Content="Include Completed" VerticalAlignment="Center" FontWeight="Medium" Checked="IncludeCompleted_Changed" Unchecked="IncludeCompleted_Changed"/>
+                                        <CheckBox x:Name="MyWorkAllProjectsCheck" Content="All projects" VerticalAlignment="Center" FontWeight="Medium" Margin="14,0,0,0"
+                                                  ToolTip="Off: only your tasks in the active project (top of the sidebar)"
+                                                  Checked="MyWorkScope_Changed" Unchecked="MyWorkScope_Changed"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <DockPanel Margin="0,10,0,0">
+                                    <TextBlock x:Name="MyWorkSelectionText" DockPanel.Dock="Right" Text="Tip: Ctrl/Shift-click to select several tasks for bulk actions." FontSize="11.5" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="▶ Start" Style="{StaticResource SecondaryButton}" Margin="0,0,6,0" Click="MyWorkStart_Click" ToolTip="Move selected task(s) to InProgress"/>
+                                        <Button Content="✔ Complete + Log Hrs" Style="{StaticResource SuccessButton}" Margin="0,0,6,0" Click="MyWorkComplete_Click" ToolTip="Complete selected task(s); Planned tasks step through InProgress automatically"/>
+                                        <Button Content="⇄ Move / Log Hrs" Style="{StaticResource SecondaryButton}" Margin="0,0,6,0" Click="MyWorkMove_Click"/>
+                                        <Button Content="⏸ Pause" Style="{StaticResource SecondaryButton}" Margin="0,0,6,0" Click="MyWorkPause_Click"/>
+                                        <Button Content="▶ Resume" Style="{StaticResource SecondaryButton}" Margin="0,0,12,0" Click="MyWorkResume_Click"/>
+                                        <Button Content="✨ Plan my day" Style="{StaticResource AiButton}" Padding="12,6" Click="AiPlanMyDay_Click" ToolTip="Ask the AI assistant to pick today's priorities"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- My Work DataGrid -->
+                        <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="0">
+                            <DataGrid x:Name="MyWorkGrid" SelectionMode="Extended" BorderThickness="0"
+                                      MouseDoubleClick="MyWorkGrid_MouseDoubleClick" SelectionChanged="MyWorkGrid_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="2.2*" FontWeight="SemiBold"/>
+                                    <DataGridTextColumn Header="Project" Binding="{Binding ProjectName}" Width="1.3*"/>
+                                    <DataGridTemplateColumn Header="Stage" Width="120" SortMemberPath="Status">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ContentPresenter Content="{Binding StatusDisplay}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Priority" Width="95" SortMemberPath="Priority">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ContentPresenter Content="{Binding Priority}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Hours" Binding="{Binding HoursDisplay}" Width="110"/>
+                                    <DataGridTemplateColumn Header="Due Date" Width="115" SortMemberPath="EndDateRaw">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock x:Name="due" Text="{Binding EndDate}" VerticalAlignment="Center"/>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                                                        <Setter TargetName="due" Property="Foreground" Value="#DC2626"/>
+                                                        <Setter TargetName="due" Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter TargetName="due" Property="Text" Value="{Binding EndDate, StringFormat='{}{0}  ⚠'}"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Story" Binding="{Binding UserStoryTitle}" Width="1.2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+                    </Grid>
+
+                    <!-- ==================== MY STORY BOARD ==================== -->
+                    <Grid x:Name="StoryBoardHost" Visibility="Collapsed">
+                        <views:StoryBoardView x:Name="MyStoryBoard"/>
+                    </Grid>
+
+                    <!-- ==================== VIEW 2: PROJECTS & TEAM ==================== -->
+                    <Grid x:Name="ProjectsView" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.15*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Projects List -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="14">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                                    <CheckBox x:Name="OnlyMyProjectsCheck" Content="Only My Projects" IsChecked="True" DockPanel.Dock="Right" VerticalAlignment="Center" FontWeight="SemiBold" Checked="ProjectsFilter_Changed" Unchecked="ProjectsFilter_Changed"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Filter Projects:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                        <TextBox x:Name="ProjectSearchBox" Width="210" TextChanged="ProjectSearchBox_TextChanged"/>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <DataGrid x:Name="ProjectsGrid" SelectionChanged="ProjectsGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Project Name" Binding="{Binding ProjectName}" Width="2*" FontWeight="SemiBold"/>
+                                        <DataGridTextColumn Header="My Role" Binding="{Binding MyRole}" Width="120"/>
+                                        <DataGridTextColumn Header="Project Manager" Binding="{Binding ProjectManagerName}" Width="1.2*"/>
+                                        <DataGridTextColumn Header="Tasks" Binding="{Binding TotalNumberOfTasks}" Width="65"/>
+                                        <DataGridTextColumn Header="End Date" Binding="{Binding EndDate}" Width="95"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Right: Selected Project Details & Team Members -->
+                        <Border Grid.Column="2" Style="{StaticResource CardBorder}" Padding="16">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                                    <DockPanel>
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                            <Button Content="✨ Health check" Style="{StaticResource AiButton}" Padding="10,5" Margin="0,0,6,0" Click="AiHealthCheck_Click"
+                                                    ToolTip="Ask the AI assistant for a sprint health check of this project"/>
+                                            <Button Content="Open Tasks →" Style="{StaticResource PrimaryButton}" Padding="10,5" Click="OpenSelectedProjectTasks_Click"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="SelectedProjectTitle" Text="Select a Project" FontSize="17" FontWeight="Bold" Foreground="#0F172A" TextWrapping="Wrap"/>
+                                    </DockPanel>
+                                    <TextBlock x:Name="SelectedProjectMeta" Text="Click any project on the left to inspect its team members and roles." FontSize="12.5" Foreground="#64748B" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <Button Content="Copy Selected User ID" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Right" Padding="8,4" FontSize="11.5" Click="CopyTeamMemberId_Click"/>
+                                    <TextBlock Text="Project Team Members" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <DataGrid x:Name="TeamMembersGrid">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="1.4*" FontWeight="SemiBold"/>
+                                        <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="115"/>
+                                        <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="1.5*"/>
+                                        <DataGridTextColumn Header="Pending" Binding="{Binding PendingTasks}" Width="70"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- ==================== VIEW 3: EPICS & USER STORIES ==================== -->
+                    <Grid x:Name="EpicsStoriesView" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="1.35*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Epics in Active Project -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="14">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <Button Content="+ New Epic" Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,6,0" Click="NewEpic_Click"/>
+                                        <Button Content="✎ Edit" Style="{StaticResource SecondaryButton}" Padding="10,5" Click="EditEpic_Click"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Project Epics" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <DataGrid x:Name="EpicsGrid" SelectionChanged="EpicsGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Epic Title" Binding="{Binding Title}" Width="2*" FontWeight="SemiBold"/>
+                                        <DataGridTemplateColumn Header="Status" Width="115" SortMemberPath="Status">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ContentPresenter Content="{Binding StatusDisplay}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Effort (h)" Binding="{Binding EstimatedEffort}" Width="75"/>
+                                        <DataGridTextColumn Header="End Date" Binding="{Binding EndDate}" Width="95"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Right: User Stories -->
+                        <Border Grid.Column="2" Style="{StaticResource CardBorder}" Padding="14">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <CheckBox x:Name="StoriesAssignedToMeCheck" Content="Assigned to Me" VerticalAlignment="Center" Margin="0,0,10,0" Checked="StoriesFilter_Changed" Unchecked="StoriesFilter_Changed"/>
+                                        <CheckBox x:Name="StoriesFilterByEpicCheck" Content="Filter by Selected Epic" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0" Checked="StoriesFilter_Changed" Unchecked="StoriesFilter_Changed"/>
+                                        <Button Content="+ New Story" Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,6,0" Click="NewStory_Click"/>
+                                        <Button Content="✎ Edit" Style="{StaticResource SecondaryButton}" Padding="10,5" Margin="0,0,6,0" Click="EditStory_Click"/>
+                                        <Button Content="👤 Reassign" Style="{StaticResource SecondaryButton}" Padding="10,5" Click="ReassignStory_Click"/>
+                                    </StackPanel>
+                                    <TextBlock Text="User Stories" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <Border DockPanel.Dock="Bottom" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
+                                    <DockPanel>
+                                        <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                                            <Button Content="+ Create Task Under Story" Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,0,6" Click="CreateTaskUnderStory_Click"/>
+                                            <Button Content="✨ Draft tasks with AI" Style="{StaticResource AiButton}" Padding="10,5" Click="AiDraftTasksFromStory_Click"
+                                                    ToolTip="The AI proposes tasks covering the acceptance criteria; review them in the batch creator before anything is created"/>
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,12,0">
+                                            <TextBlock x:Name="SelectedStoryTitleText" Text="Select a user story to view acceptance criteria or add tasks" FontWeight="SemiBold" Foreground="#0F172A" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="SelectedStoryCriteriaText" Text="" FontSize="12" Foreground="#475569" TextWrapping="Wrap" Margin="0,3,0,0" MaxHeight="72"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <DataGrid x:Name="StoriesGrid" SelectionChanged="StoriesGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="User Story" Binding="{Binding Story}" Width="2.3*" FontWeight="SemiBold"/>
+                                        <DataGridTemplateColumn Header="Stage" Width="110" SortMemberPath="Status">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ContentPresenter Content="{Binding Status}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Priority" Width="90" SortMemberPath="Priority">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ContentPresenter Content="{Binding Priority}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Assignees" Binding="{Binding AssigneesDisplay}" Width="1.2*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- ==================== VIEW 4: PROJECT TASKS, SUB-TASKS & COMMENTS ==================== -->
+                    <Grid x:Name="TasksView" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.45*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Project Tasks List -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="14">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <Button Content="+ New Task" Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,6,0" Click="NewTask_Click"/>
+                                        <Button Content="✎ Edit" Style="{StaticResource SecondaryButton}" Padding="9,5" Margin="0,0,6,0" Click="EditProjectTask_Click"/>
+                                        <Button Content="⇄ Move / Hrs" Style="{StaticResource SuccessButton}" Padding="9,5" Margin="0,0,6,0" Click="MoveProjectTask_Click"/>
+                                        <Button Content="👤 Reassign" Style="{StaticResource SecondaryButton}" Padding="9,5" Click="ReassignProjectTask_Click"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Story:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                        <ComboBox x:Name="TaskStoryFilterCombo" Width="190" DisplayMemberPath="Story" SelectedValuePath="Id" SelectionChanged="TaskStoryFilterCombo_SelectionChanged"/>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <Button Content="⬇ CSV" Style="{StaticResource GhostButton}" Margin="0,0,4,0" Click="ExportProjectTasks_Click"/>
+                                        <Button Content="⏸ Pause Timer" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Margin="0,0,6,0" Click="PauseProjectTask_Click"/>
+                                        <Button Content="▶ Resume Timer" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Click="ResumeProjectTask_Click"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox x:Name="ProjectTaskSearchBox" Width="230" TextChanged="ProjectTaskSearchBox_TextChanged" ToolTip="Search tasks by title, assignee or stage"/>
+                                        <TextBlock x:Name="ProjectTaskCountText" Text="" VerticalAlignment="Center" Foreground="#94A3B8" FontSize="11.5" Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <DataGrid x:Name="ProjectTasksGrid" SelectionChanged="ProjectTasksGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Task Title" Binding="{Binding Title}" Width="2*" FontWeight="SemiBold"/>
+                                        <DataGridTemplateColumn Header="Stage" Width="115" SortMemberPath="Status">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ContentPresenter Content="{Binding StatusDisplay}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Assignee" Binding="{Binding AssigneeName}" Width="1.1*"/>
+                                        <DataGridTemplateColumn Header="Priority" Width="90" SortMemberPath="Priority">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ContentPresenter Content="{Binding Priority}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Hours" Binding="{Binding HoursDisplay}" Width="95"/>
+                                        <DataGridTextColumn Header="Due Date" Binding="{Binding EndDate}" Width="95"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Right: Task Inspector (Sub-tasks + Comments) -->
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="1*"/>
+                                <RowDefinition Height="12"/>
+                                <RowDefinition Height="1.15*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Selected Task Summary Header -->
+                            <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="12,10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock x:Name="InspectorTaskTitle" Text="Select a task to view sub-tasks &amp; comments" FontWeight="Bold" FontSize="14.5" Foreground="#0F172A" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="InspectorTaskDesc" Text="All sub-tasks and team comments for the selected task load automatically." FontSize="12" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap" MaxHeight="90"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Sub-tasks Card -->
+                            <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="12">
+                                <DockPanel>
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                            <Button Content="+ Add Sub-task" Style="{StaticResource PrimaryButton}" Padding="8,4" FontSize="11.5" Margin="0,0,6,0" Click="AddSubTask_Click"/>
+                                            <Button Content="⇄ Move Stage" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11.5" Click="MoveSubTask_Click"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Sub-tasks" FontWeight="Bold" FontSize="13.5" VerticalAlignment="Center"/>
+                                    </DockPanel>
+
+                                    <DataGrid x:Name="SubTasksGrid" RowHeight="32" FontSize="12">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Sub-task" Binding="{Binding Title}" Width="2*" FontWeight="SemiBold"/>
+                                            <DataGridTemplateColumn Header="Stage" Width="105">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ContentPresenter Content="{Binding Status}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Hrs" Binding="{Binding PlannedHours}" Width="50"/>
+                                            <DataGridTemplateColumn Header="Blocker" Width="75">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ContentPresenter Content="{Binding IsBlocker}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- Comments Card -->
+                            <Border Grid.Row="3" Style="{StaticResource CardBorder}" Padding="12">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="Task Comments" FontWeight="Bold" FontSize="13.5" Margin="0,0,0,8"/>
+
+                                    <!-- Add Comment Bar -->
+                                    <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="NewCommentBox" Grid.Column="0" ToolTip="Write a comment or remark for this task... (Enter to post)" KeyDown="NewCommentBox_KeyDown"/>
+                                        <Button Grid.Column="2" Content="Post" Style="{StaticResource PrimaryButton}" Padding="14,6" Click="AddComment_Click"/>
+                                    </Grid>
+
+                                    <ListBox x:Name="CommentsList" BorderBrush="#E2E8F0" BorderThickness="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="2,6">
+                                                    <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" Background="#E0E7FF" Margin="0,0,8,0" VerticalAlignment="Top">
+                                                        <TextBlock Text="{Binding Initial}" Foreground="#3730A3" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Author}" FontWeight="Bold" FontSize="12" Foreground="#1E293B"/>
+                                                            <TextBlock Text=" • " Foreground="#94A3B8" FontSize="12"/>
+                                                            <TextBlock Text="{Binding CreatedAt}" Foreground="#64748B" FontSize="11.5"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Remark}" TextWrapping="Wrap" FontSize="12.5" Foreground="#0F172A" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ==================== VIEW 5: AI ASSISTANT ==================== -->
+                    <Grid x:Name="AiView" Visibility="Visible">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="320"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel Grid.Column="0">
+                        <!-- Active project: everything in the AI workspace works on it -->
+                        <Border DockPanel.Dock="Top" Background="{StaticResource AiSoftBrush}" BorderBrush="#DDD6FE" BorderThickness="1"
+                                CornerRadius="12" Padding="14,8" Margin="0,0,0,10">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Working on" FontWeight="SemiBold" Foreground="#5B21B6" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBlock x:Name="AiProjectStatsText" DockPanel.Dock="Right" FontSize="11.5" Foreground="#6D28D9" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="AiProjectCombo" DisplayMemberPath="DisplayLabel" MaxWidth="520" HorizontalAlignment="Left" MinWidth="320"
+                                          SelectionChanged="AiProjectCombo_SelectionChanged" ToolTip="The active project; the chat, task planner, quick update and analysis all use it"/>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Padding="0">
+                            <TabControl x:Name="AiTabs" SelectionChanged="AiTabs_SelectionChanged"
+                                        materialDesign:ColorZoneAssist.Mode="Standard">
+                                <TabItem Header="💬 Chat">
+
+                        <!-- Chat -->
+                        <Border Padding="0">
+                            <DockPanel>
+                                <!-- Chat header -->
+                                <Border DockPanel.Dock="Top" BorderBrush="#EEF2F7" BorderThickness="0,0,0,1" Padding="16,12">
+                                    <DockPanel>
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                            <Button Content="📋 Copy last answer" Style="{StaticResource GhostButton}" Margin="0,0,4,0" Click="AiCopyLast_Click"/>
+                                            <Button Content="＋ New chat" Style="{StaticResource SecondaryButton}" Padding="10,4" Click="AiNewChat_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Background="{StaticResource AiGradientBrush}" CornerRadius="8" Width="30" Height="30" Margin="0,0,10,0">
+                                                <TextBlock Text="✨" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Agile PM Assistant" FontSize="14.5" FontWeight="Bold" Foreground="#0F172A"/>
+                                                <TextBlock x:Name="AiContextText" Text="Uses your Agile PM tools as you" FontSize="11.5" Foreground="#64748B"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
+                                <!-- Composer -->
+                                <Border DockPanel.Dock="Bottom" BorderBrush="#EEF2F7" BorderThickness="0,1,0,0" Padding="14,12">
+                                    <StackPanel>
+                                        <WrapPanel x:Name="AiSuggestionsPanel" Margin="0,0,0,4">
+                                            <Button Content="🩺 Project health check" Style="{StaticResource ChipButton}" Tag="prompt:sprint_health_check" Click="AiSuggestion_Click"/>
+                                            <Button Content="⏰ What's overdue here?" Style="{StaticResource ChipButton}" Tag="What's overdue or due in the next 3 days in the active project? Group it by person." Click="AiSuggestion_Click"/>
+                                            <Button Content="🙋 My tasks here" Style="{StaticResource ChipButton}" Tag="List my open tasks in the active project with their stage, hours and due date, most urgent first." Click="AiSuggestion_Click"/>
+                                            <Button Content="🧩 Break down selected story" Style="{StaticResource ChipButton}" Tag="prompt:break_down_user_story" Click="AiSuggestion_Click"/>
+                                            <Button Content="☀ Plan my day" Style="{StaticResource ChipButton}" Tag="prompt:plan_my_day" Click="AiSuggestion_Click"/>
+                                            <Button Content="📝 Write my standup" Style="{StaticResource ChipButton}" Tag="prompt:daily_standup" Click="AiSuggestion_Click"/>
+                                        </WrapPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="AiInputBox" Grid.Column="0" MinHeight="40" MaxHeight="140" AcceptsReturn="True" TextWrapping="Wrap"
+                                                     VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Center" PreviewKeyDown="AiInputBox_PreviewKeyDown"
+                                                     ToolTip="Ask anything about your Agile PM work. Enter to send, Shift+Enter for a new line."/>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                                <Button x:Name="AiStopBtn" Content="■ Stop" Style="{StaticResource SecondaryButton}" Padding="12,9" Margin="0,0,6,0" Visibility="Collapsed" Click="AiStop_Click"/>
+                                                <Button x:Name="AiSendBtn" Content="Send ➤" Style="{StaticResource AiButton}" Padding="16,9" Click="AiSend_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="AI can make mistakes. Changes to Agile PM need your approval unless auto-approve is on." FontSize="11" Foreground="#94A3B8" Margin="2,6,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Messages -->
+                                <Grid>
+                                    <ScrollViewer x:Name="AiChatScroll" VerticalScrollBarVisibility="Auto" Padding="16,12">
+                                        <ItemsControl x:Name="AiChatList">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,4">
+                                                        <!-- User bubble -->
+                                                        <Border x:Name="userBubble" Visibility="Collapsed" HorizontalAlignment="Right" MaxWidth="620"
+                                                                Background="#2563EB" CornerRadius="12,12,2,12" Padding="12,8" Margin="80,0,0,0">
+                                                            <TextBlock Text="{Binding Text}" Foreground="White" TextWrapping="Wrap" FontSize="13"/>
+                                                        </Border>
+                                                        <!-- Assistant bubble -->
+                                                        <DockPanel x:Name="assistantBubble" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,0,60,0">
+                                                            <Border DockPanel.Dock="Left" Background="{StaticResource AiGradientBrush}" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top" Margin="0,2,8,0">
+                                                                <TextBlock Text="✨" FontSize="11" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="2,12,12,12" Padding="12,9" MaxWidth="720">
+                                                                <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent"
+                                                                         Padding="0" FontSize="13" Foreground="#0F172A" FontFamily="Segoe UI"/>
+                                                            </Border>
+                                                        </DockPanel>
+                                                        <!-- Tool call row -->
+                                                        <Border x:Name="toolRow" Visibility="Collapsed" HorizontalAlignment="Left" Margin="32,0,60,0"
+                                                                Background="{StaticResource AiSoftBrush}" BorderBrush="#E9E3FF" BorderThickness="1" CornerRadius="8" Padding="10,5"
+                                                                ToolTip="{Binding Details}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock x:Name="toolIcon" Text="⚙" Foreground="#7C3AED" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{Binding ToolName}" FontFamily="Consolas" FontSize="12" Foreground="#5B21B6" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{Binding Text}" FontSize="11.5" Foreground="#6D28D9" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <!-- Notice -->
+                                                        <Border x:Name="noticeRow" Visibility="Collapsed" HorizontalAlignment="Center" Background="#FEF3C7" CornerRadius="8" Padding="10,5">
+                                                            <TextBlock Text="{Binding Text}" Foreground="#92400E" FontSize="12" TextWrapping="Wrap"/>
+                                                        </Border>
+                                                    </Grid>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding Role}" Value="User">
+                                                            <Setter TargetName="userBubble" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Role}" Value="Assistant">
+                                                            <Setter TargetName="assistantBubble" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Role}" Value="Tool">
+                                                            <Setter TargetName="toolRow" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Role}" Value="Notice">
+                                                            <Setter TargetName="noticeRow" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="done">
+                                                            <Setter TargetName="toolIcon" Property="Text" Value="✔"/>
+                                                            <Setter TargetName="toolIcon" Property="Foreground" Value="#059669"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="failed">
+                                                            <Setter TargetName="toolIcon" Property="Text" Value="✖"/>
+                                                            <Setter TargetName="toolIcon" Property="Foreground" Value="#DC2626"/>
+                                                            <Setter TargetName="toolRow" Property="Background" Value="#FEF2F2"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="declined">
+                                                            <Setter TargetName="toolIcon" Property="Text" Value="⊘"/>
+                                                            <Setter TargetName="toolIcon" Property="Foreground" Value="#64748B"/>
+                                                            <Setter TargetName="toolRow" Property="Background" Value="#F1F5F9"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <!-- Empty state -->
+                                    <StackPanel x:Name="AiEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460">
+                                        <Border Background="{StaticResource AiGradientBrush}" Width="56" Height="56" CornerRadius="16" HorizontalAlignment="Center" Margin="0,0,0,14">
+                                            <TextBlock Text="✨" FontSize="26" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Ask about your work, or have it done for you" FontSize="17" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" TextAlignment="Center"/>
+                                        <TextBlock FontSize="12.5" Foreground="#64748B" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
+                                                   Text="The assistant reads and updates Agile PM with its built-in tools, signed in as you. Try a suggestion below, or ask things like &quot;move my finished tasks to Completed and log 2 hours each&quot;."/>
+                                    </StackPanel>
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+                                </TabItem>
+                                <TabItem Header="📝 Describe → tasks">
+                                    <views:TaskPlannerView x:Name="TaskPlanner"/>
+                                </TabItem>
+                                <TabItem Header="⚡ Quick update">
+                                    <views:QuickUpdateView x:Name="QuickUpdate"/>
+                                </TabItem>
+                                <TabItem Header="📊 Project analysis">
+                                    <views:ProjectAnalysisView x:Name="ProjectAnalysis"/>
+                                </TabItem>
+                            </TabControl>
+                        </Border>
+                        </DockPanel>
+
+                        <!-- Assistant settings & status -->
+                        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Agile PM tools" FontSize="14" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,8"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <Ellipse Width="9" Height="9" Fill="#10B981" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Ready" FontWeight="SemiBold" Foreground="#334155"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="AiToolsText" FontSize="11.5" Foreground="#64748B" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="AI model" FontSize="14" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="AiModelText" Text="Model: claude-opus-5-5" FontSize="11.5" Foreground="#64748B" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Provider" Style="{StaticResource FieldLabel}"/>
+                                        <ComboBox x:Name="AiProviderCombo" Margin="0,0,0,10" SelectionChanged="AiProviderCombo_SelectionChanged">
+                                            <ComboBoxItem Content="Claude (Anthropic API key)" Tag="Claude"/>
+                                            <ComboBoxItem Content="Open models: hosted free tiers or local" Tag="Local"/>
+                                        </ComboBox>
+
+                                        <!-- Claude settings -->
+                                        <StackPanel x:Name="ClaudeSettingsPanel">
+                                            <TextBlock Text="API key" Style="{StaticResource FieldLabel}"/>
+                                            <PasswordBox x:Name="AiApiKeyBox" Margin="0,0,0,6" ToolTip="Stored encrypted for your Windows account. Leave empty to use ANTHROPIC_API_KEY."/>
+                                            <DockPanel Margin="0,0,0,10">
+                                                <Button DockPanel.Dock="Right" Content="Save key" Style="{StaticResource PrimaryButton}" Padding="12,5" Click="SaveAiKey_Click"/>
+                                                <TextBlock x:Name="AiKeyStatusText" Text="No key set" FontSize="11.5" Foreground="#64748B" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                            </DockPanel>
+                                        </StackPanel>
+
+                                        <!-- Open model settings: hosted free tiers or local servers (any OpenAI-compatible endpoint) -->
+                                        <StackPanel x:Name="LocalSettingsPanel" Visibility="Collapsed">
+                                            <TextBlock Text="Service" Style="{StaticResource FieldLabel}"/>
+                                            <ComboBox x:Name="OpenModelPresetCombo" DisplayMemberPath="DisplayName" FontSize="12" Margin="0,0,0,6"
+                                                      SelectionChanged="OpenModelPresetCombo_SelectionChanged"/>
+                                            <TextBlock x:Name="OpenModelPresetNotes" FontSize="11" Foreground="#475569" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                            <Border x:Name="OpenModelPrivacyNote" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6"
+                                                    Padding="8,5" Margin="0,0,0,8" Visibility="Collapsed">
+                                                <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap"
+                                                           Text="Hosted: your questions and the Agile PM data the tools return (task titles, names, hours) are sent to this service. Free tiers may log prompts; check its terms before using work data."/>
+                                            </Border>
+                                            <TextBlock Text="Server URL" Style="{StaticResource FieldLabel}"/>
+                                            <TextBox x:Name="LocalAiUrlBox" FontSize="12" Margin="0,0,0,8"
+                                                     ToolTip="Ollama: http://localhost:11434 • LM Studio: http://localhost:1234/v1 • any OpenAI-compatible server"/>
+                                            <TextBlock Text="Model" Style="{StaticResource FieldLabel}"/>
+                                            <DockPanel Margin="0,0,0,8">
+                                                <Button DockPanel.Dock="Right" Content="⟳" Style="{StaticResource SecondaryButton}" Padding="10,5" Margin="6,0,0,0"
+                                                        Click="LoadLocalModels_Click" ToolTip="List the models installed on the server"/>
+                                                <ComboBox x:Name="LocalAiModelCombo" IsEditable="True" FontSize="12"
+                                                          ToolTip="Pick an installed model or type its name, e.g. llama3.1:8b or qwen2.5:7b"/>
+                                            </DockPanel>
+                                            <TextBlock x:Name="LocalAiKeyLabel" Text="API key (optional)" Style="{StaticResource FieldLabel}"/>
+                                            <PasswordBox x:Name="LocalAiKeyBox" Margin="0,0,0,4" ToolTip="Stored encrypted for your Windows account, separately for each service."/>
+                                            <TextBlock FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap">
+                                                <Run x:Name="LocalAiKeyStatus" Foreground="#64748B" Text=""/>
+                                                <Hyperlink x:Name="OpenModelKeyLink" Click="OpenModelKeyLink_Click"><Run x:Name="OpenModelKeyLinkText" Text="Get a free key"/></Hyperlink>
+                                            </TextBlock>
+                                            <CheckBox x:Name="LocalAiAllToolsCheck" Content="Send all tools to the model" FontWeight="Medium"
+                                                      ToolTip="Off: about 20 core tools, best for 7–8B models. On: every tool; needs a large context window."/>
+                                            <DockPanel Margin="0,10,0,6">
+                                                <Button DockPanel.Dock="Right" Content="Save" Style="{StaticResource PrimaryButton}" Padding="12,5" Click="SaveLocalAi_Click"/>
+                                                <TextBlock x:Name="LocalAiStatusText" Text="" FontSize="11.5" Foreground="#64748B" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                            </DockPanel>
+                                            <TextBlock FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,0,0,10"
+                                                       Text="Pick a model with tool calling (Llama 3.1+/3.3, Qwen 2.5/3, Mistral, GPT-OSS). Hosted 70B-class models follow multi-step requests better than small local ones; free tiers have rate limits, and the app waits and retries when it hits one."/>
+                                        </StackPanel>
+
+                                        <CheckBox x:Name="AiAutoApproveCheck" Content="Auto-approve changes" FontWeight="Medium" Checked="AiAutoApprove_Changed" Unchecked="AiAutoApprove_Changed"
+                                                  ToolTip="When off, you confirm every create/update/move the assistant makes."/>
+                                        <TextBlock Text="Read-only lookups always run without asking." FontSize="11" Foreground="#94A3B8" Margin="20,2,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource CardBorder}">
+                                    <StackPanel>
+                                        <TextBlock Text="Context sent with each question" FontSize="14" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="AiContextPreview" FontSize="11.5" Foreground="#475569" TextWrapping="Wrap" FontFamily="Consolas"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- ==================== VIEW 6: AUTOMATION & STANDUP ==================== -->
+                    <Grid x:Name="AutomationView" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Bulk Task Automation -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="18">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="✨ Draft with AI" Style="{StaticResource AiButton}" Padding="12,5" Click="AiDraftTasksFromBatchStory_Click"
+                                                ToolTip="The AI drafts tasks for the target story below; review before creating"/>
+                                        <TextBlock Text="⚡ Batch Creator" FontSize="16" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock FontSize="12" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,12">
+                                        One item per line: <Run FontFamily="Consolas" Foreground="#334155">Title | Hours | Priority | Description | Due</Run>.
+                                        Due is a date (2026-11-30) or days from today (+5). Lines starting with # are ignored.
+                                    </TextBlock>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Create as" Style="{StaticResource FieldLabel}"/>
+                                            <ComboBox x:Name="BatchModeCombo" SelectionChanged="BatchModeCombo_SelectionChanged">
+                                                <ComboBoxItem Content="Project tasks" IsSelected="True"/>
+                                                <ComboBoxItem Content="Sub-tasks of selected task"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Target Epic (optional)" Style="{StaticResource FieldLabel}"/>
+                                            <ComboBox x:Name="BatchEpicCombo" DisplayMemberPath="Title" SelectedValuePath="Id"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="Target Story (optional)" Style="{StaticResource FieldLabel}"/>
+                                            <ComboBox x:Name="BatchStoryCombo" DisplayMemberPath="Story" SelectedValuePath="Id"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="110"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Default Assignee" Style="{StaticResource FieldLabel}"/>
+                                            <ComboBox x:Name="BatchAssigneeCombo" DisplayMemberPath="DisplayName" SelectedValuePath="UserId"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Default due (days)" Style="{StaticResource FieldLabel}"/>
+                                            <TextBox x:Name="BatchDefaultDueBox" Text="7"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="4" x:Name="BatchSkipDuplicatesCheck" Content="Skip duplicate titles" IsChecked="True" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                                                  ToolTip="Don't create a task whose title already exists in the project (or sub-task under the selected task)"/>
+                                    </Grid>
+                                    <TextBlock x:Name="BatchTargetHint" Text="" FontSize="11.5" Foreground="#7C3AED" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                                    <ProgressBar x:Name="BatchProgressBar" Height="5" Margin="0,0,0,8" Foreground="#2563EB" Background="#E2E8F0" BorderThickness="0" Visibility="Collapsed"/>
+                                    <DockPanel>
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                            <Button Content="👁 Preview" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="PreviewBatch_Click"/>
+                                            <Button x:Name="RunBatchCreateBtn" Content="🚀 Create All in Agile PM" Style="{StaticResource PrimaryButton}" Click="RunBatchCreate_Click"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Sample" Style="{StaticResource GhostButton}" Click="LoadBatchTemplate_Click"/>
+                                            <Button Content="Import CSV…" Style="{StaticResource GhostButton}" Click="ImportBatchCsv_Click"/>
+                                            <Button Content="Clear" Style="{StaticResource GhostButton}" Click="ClearBatch_Click"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <TextBlock x:Name="BatchProgressText" Text="Ready." FontSize="12" Foreground="#475569" Margin="0,8,0,0"/>
+                                </StackPanel>
+
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBox x:Name="BatchTasksInputBox" Grid.Row="0"
+                                             AcceptsReturn="True"
+                                             TextWrapping="NoWrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             HorizontalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             FontFamily="Consolas"
+                                             FontSize="12.5"
+                                             Text="Design API schema and DTO models | 4 | High | Create request/response contracts | +3&#x0a;Implement service layer &amp; unit tests | 6 | Medium | Connect endpoints and validate rules | +5&#x0a;Code review and QA verification | 2 | Low | Verify acceptance criteria | +7"/>
+                                    <DataGrid x:Name="BatchPreviewGrid" Grid.Row="1" MaxHeight="190" Margin="0,10,0,0" RowHeight="30" FontSize="12" Visibility="Collapsed">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="#" Binding="{Binding LineNumber}" Width="34"/>
+                                            <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="2*" FontWeight="SemiBold"/>
+                                            <DataGridTextColumn Header="Hrs" Binding="{Binding Hours}" Width="48"/>
+                                            <DataGridTemplateColumn Header="Priority" Width="85">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ContentPresenter Content="{Binding Priority}" ContentTemplate="{StaticResource PillTemplate}"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Due" Binding="{Binding DueDisplay}" Width="88"/>
+                                            <DataGridTextColumn Header="Check" Binding="{Binding Check}" Width="1.2*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- Right: Standup + Automation history -->
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="1.5*"/>
+                                <RowDefinition Height="14"/>
+                                <RowDefinition Height="1*"/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Style="{StaticResource CardBorder}" Padding="18">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                        <TextBlock Text="📝 Daily Standup &amp; Status Report" FontSize="16" FontWeight="Bold" Foreground="#0F172A"/>
+                                        <TextBlock Text="Summarizes your in-progress, planned, completed and overdue tasks."
+                                                   FontSize="12" Foreground="#64748B" Margin="0,4,0,10"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="⟳ Generate" Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,6,0" Click="GenerateStandupReport_Click"/>
+                                            <Button x:Name="AiPolishStandupBtn" Content="✨ Polish with AI" Style="{StaticResource AiButton}" Padding="10,5" Margin="0,0,6,0" Click="AiPolishStandup_Click"
+                                                    ToolTip="Rewrite the report as a short, human standup update"/>
+                                            <Button Content="📋 Copy" Style="{StaticResource SecondaryButton}" Padding="10,5" Click="CopyStandupReport_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <TextBox x:Name="StandupReportBox"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             FontFamily="Consolas"
+                                             FontSize="12.5"
+                                             Background="#F8FAFC"/>
+                                </DockPanel>
+                            </Border>
+
+                            <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="16">
+                                <DockPanel>
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <Button DockPanel.Dock="Right" Content="Clear" Style="{StaticResource GhostButton}" Click="ClearAutomationHistory_Click"/>
+                                        <TextBlock Text="🕘 Automation history" FontSize="14" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <ListBox x:Name="AutomationHistoryList" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,3">
+                                                    <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" Width="18" Foreground="#059669"/>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding WhenDisplay}" Foreground="#94A3B8" FontSize="11.5" Margin="8,0,0,0"/>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" Foreground="#0F172A"/>
+                                                        <TextBlock Text="{Binding Outcome}" FontSize="11.5" Foreground="#64748B" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ==================== VIEW 7: ACTIVITY LOG ==================== -->
+                    <Grid x:Name="ActivityView" Visibility="Collapsed">
+                        <!-- Live API Activity Log -->
+                        <Border Style="{StaticResource CardBorder}" Padding="18">
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <Button Content="Clear Log" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Right" Padding="8,4" FontSize="11.5" Click="ClearApiLog_Click"/>
+                                    <Button Content="🔑 Copy Current Bearer Token" Style="{StaticResource SecondaryButton}" DockPanel.Dock="Right" Padding="8,4" FontSize="11.5" Margin="0,0,8,0" Click="CopyBearerToken_Click"/>
+                                    <TextBlock Text="📡 Live Agile PM &amp; AI Tool Activity" FontSize="16" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <TextBox x:Name="ApiLogBox"
+                                         IsReadOnly="True"
+                                         AcceptsReturn="True"
+                                         VerticalScrollBarVisibility="Auto"
+                                         VerticalContentAlignment="Top"
+                                         TextWrapping="Wrap"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         Background="#0F172A"
+                                         Foreground="#E2E8F0"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- Bottom Status Bar -->
+                <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrushLight}" BorderThickness="0,1,0,0" Padding="22,8">
+                    <DockPanel>
+                        <TextBlock x:Name="TokenExpiryText" DockPanel.Dock="Right" Text="Session: Active" FontSize="12" Foreground="#64748B"/>
+                        <TextBlock x:Name="LastSyncText" DockPanel.Dock="Right" Text="" FontSize="12" Foreground="#94A3B8" Margin="0,0,18,0"/>
+                        <TextBlock x:Name="StatusBarText" Text="Ready" FontSize="12" Foreground="#334155" FontWeight="Medium"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ==================== TOAST NOTIFICATIONS ==================== -->
+        <StackPanel x:Name="ToastHost" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,46" Width="340" IsHitTestVisible="False"/>
+
+        <!-- ==================== SIGN-IN OVERLAY ==================== -->
+        <Grid x:Name="LoginOverlay" Background="#D90F172A" Visibility="Visible">
+            <Border Width="450" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="White" CornerRadius="14" Padding="30,28">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Border Background="{StaticResource AiGradientBrush}" CornerRadius="9" Width="38" Height="38" Margin="0,0,12,0">
+                            <TextBlock Text="PM" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel>
+                            <TextBlock Text="Sign in to Agile PM" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="AgilePM Desktop &amp; Task Automation" FontSize="12.5" Foreground="#64748B"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="Agile PM URL" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <TextBox x:Name="LoginUrlBox" Text="https://agilepm.example.com/" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Account Email" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <TextBox x:Name="LoginEmailBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Password" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <PasswordBox x:Name="LoginPasswordBox" Margin="0,0,0,12" KeyDown="LoginPasswordBox_KeyDown"/>
+
+                    <CheckBox x:Name="RememberSessionCheck" Content="Remember session" IsChecked="True" FontWeight="Medium" Foreground="#334155" Margin="0,0,0,14"/>
+
+                    <Border x:Name="LoginErrorBorder" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12" Visibility="Collapsed">
+                        <TextBlock x:Name="LoginErrorText" Foreground="#B91C1C" FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <Button x:Name="LoginSubmitBtn" Content="Sign In to Agile PM" Style="{StaticResource PrimaryButton}" Padding="14,10" FontSize="14" Click="LoginSubmit_Click"/>
+
+                    <Expander Header="Or sign in with an existing Bearer JWT Token" Foreground="#475569" FontSize="12" Margin="0,14,0,0">
+                        <StackPanel Margin="0,8,0,0">
+                            <TextBox x:Name="DirectTokenBox" Height="54" TextWrapping="Wrap" VerticalContentAlignment="Top" Margin="0,0,0,8" ToolTip="Paste JWT access token here"/>
+                            <Button Content="Use Bearer Token" Style="{StaticResource SecondaryButton}" Click="UseBearerToken_Click"/>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

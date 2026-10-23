@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+publish/
+dist/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# Runtime logs
+logs/
+
+# Local settings with real Agile PM endpoints and credentials: never commit
+appsettings.Local.json
+appsettings.*.local.json

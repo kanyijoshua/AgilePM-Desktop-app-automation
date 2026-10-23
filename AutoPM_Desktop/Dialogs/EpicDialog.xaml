@@ -1,0 +1,82 @@
+<Window x:Class="AutoPM_Desktop.Dialogs.EpicDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        FontFamily="{materialDesign:MaterialDesignFont}"
+        TextElement.Foreground="#0F172A"
+        Title="Epic"
+        Width="480" Height="520"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC">
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="HeaderTitle" Grid.Row="0" Text="Create Epic" FontSize="18" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,14"/>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="Epic Title *" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+            <TextBox x:Name="TitleBox" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Description" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+            <TextBox x:Name="DescriptionBox" Height="74" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Margin="0,0,0,12"/>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Effort (Hours)" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <TextBox x:Name="EffortBox" Text="16"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Status (0-3)" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="StatusCombo" SelectedIndex="0">
+                        <ComboBoxItem Content="0 - Planned" Tag="0"/>
+                        <ComboBoxItem Content="1 - In Progress" Tag="1"/>
+                        <ComboBoxItem Content="2 - Completed" Tag="2"/>
+                        <ComboBoxItem Content="3 - Closed" Tag="3"/>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="Priority (0-3)" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <ComboBox x:Name="PriorityCombo" SelectedIndex="1">
+                        <ComboBoxItem Content="0 - Low" Tag="0"/>
+                        <ComboBoxItem Content="1 - Medium" Tag="1"/>
+                        <ComboBoxItem Content="2 - High" Tag="2"/>
+                        <ComboBoxItem Content="3 - Critical" Tag="3"/>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Start Date" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <DatePicker x:Name="StartDatePicker"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="End Date" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                    <DatePicker x:Name="EndDatePicker"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Style="{StaticResource SecondaryButton}" Width="90" Margin="0,0,10,0" Click="Cancel_Click"/>
+            <Button Content="Save Epic" Style="{StaticResource PrimaryButton}" Width="120" Click="Save_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

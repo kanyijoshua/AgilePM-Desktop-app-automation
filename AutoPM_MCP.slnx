@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AutoPM_MCP/AutoPM_MCP.csproj" />
+  <Project Path="AutoPM_Desktop/AutoPM_Desktop.csproj" />
+</Solution>

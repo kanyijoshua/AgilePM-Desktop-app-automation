@@ -1,0 +1,71 @@
+<UserControl x:Class="AutoPM_Desktop.Views.ProjectAnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <UserControl.Resources>
+        <Style x:Key="Kpi" TargetType="Border">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="MinWidth" Value="118"/>
+        </Style>
+    </UserControl.Resources>
+    <DockPanel Margin="16,14">
+        <StackPanel DockPanel.Dock="Top">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="⟳ Reload data" Style="{StaticResource GhostButton}" Click="Reload_Click"/>
+                <TextBlock x:Name="TitleText" Text="Project analysis" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+            </DockPanel>
+            <TextBlock x:Name="DataText" FontSize="12" Foreground="#64748B" Margin="0,2,0,10" TextWrapping="Wrap"
+                       Text="Numbers are computed from every task and story in the active project; the AI writes the analysis from them."/>
+
+            <!-- Key numbers, computed locally -->
+            <WrapPanel x:Name="KpiPanel" Visibility="Collapsed">
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Complete" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiDone" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Open tasks" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiOpen" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Overdue" FontSize="11" Foreground="#B91C1C"/><TextBlock x:Name="KpiOverdue" FontSize="20" FontWeight="Bold" Foreground="#B91C1C"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Due in 7 days" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiDueSoon" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Returned" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiReturned" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Unassigned open" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiUnassigned" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+                <Border Style="{StaticResource Kpi}"><StackPanel><TextBlock Text="Hours logged / planned" FontSize="11" Foreground="#64748B"/><TextBlock x:Name="KpiHours" FontSize="20" FontWeight="Bold"/></StackPanel></Border>
+            </WrapPanel>
+
+            <WrapPanel x:Name="ReportButtons" Margin="0,4,0,0">
+                <Button Content="🩺 Health &amp; risks" Style="{StaticResource ChipButton}" Tag="health" Click="Report_Click"/>
+                <Button Content="👥 Workload balance" Style="{StaticResource ChipButton}" Tag="workload" Click="Report_Click"/>
+                <Button Content="📦 Epic &amp; story progress" Style="{StaticResource ChipButton}" Tag="progress" Click="Report_Click"/>
+                <Button Content="⏰ Overdue &amp; upcoming" Style="{StaticResource ChipButton}" Tag="deadlines" Click="Report_Click"/>
+                <Button Content="📣 Stakeholder update" Style="{StaticResource ChipButton}" Tag="status" Click="Report_Click"/>
+                <Button Content="🙋 My work here" Style="{StaticResource ChipButton}" Tag="mine" Click="Report_Click"/>
+            </WrapPanel>
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="QuestionBox" materialDesign:HintAssist.Hint="Or ask anything about this project, e.g. which epics will slip past their end date?"
+                         KeyDown="QuestionBox_KeyDown"/>
+                <Button Grid.Column="2" x:Name="AskBtn" Content="Ask" Style="{StaticResource AiButton}" Tag="custom" Click="Report_Click"/>
+            </Grid>
+            <ProgressBar x:Name="BusyBar" IsIndeterminate="True" Height="3" Margin="0,8,0,4" Visibility="Hidden"/>
+        </StackPanel>
+
+        <!-- Report -->
+        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Margin="0,6,0,0">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="12,8,8,0">
+                    <Button DockPanel.Dock="Right" Content="📋 Copy" Style="{StaticResource GhostButton}" Click="Copy_Click"/>
+                    <TextBlock x:Name="ReportTitle" Text="Report" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBox x:Name="ReportBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" BorderThickness="0"
+                         VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Padding="12,8" FontSize="13"
+                         materialDesign:TextFieldAssist.DecorationVisibility="Hidden" Style="{x:Null}" Background="Transparent"
+                         Text="Pick a report above. It uses the live data of the active project."/>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>
