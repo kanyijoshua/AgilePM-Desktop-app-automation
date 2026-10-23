@@ -9,7 +9,15 @@
     <AssemblyName>AutoPM_Desktop</AssemblyName>
     <RootNamespace>AutoPM_Desktop</RootNamespace>
     <ApplicationTitle>AgilePM Desktop &amp; Task Automation</ApplicationTitle>
+    <!-- Icon of the .exe (Explorer, taskbar, Start menu) -->
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Window icon, and the splash WPF shows while the app starts (it fades out when the main window opens). -->
+    <Resource Include="Assets\AppIcon.ico" />
+    <SplashScreen Include="Assets\Splash.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Claude API for the AI assistant -->

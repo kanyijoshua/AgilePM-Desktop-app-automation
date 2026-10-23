@@ -10,7 +10,8 @@
         MinWidth="1100" MinHeight="700"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource AppBgBrush}"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        Icon="/Assets/AppIcon.ico">
 
     <Window.InputBindings>
         <KeyBinding Key="K" Modifiers="Control" Command="{x:Static ApplicationCommands.Find}"/>
