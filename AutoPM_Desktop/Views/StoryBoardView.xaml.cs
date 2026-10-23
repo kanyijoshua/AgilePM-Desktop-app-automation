@@ -4,6 +4,7 @@ using AutoPM_Desktop.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -31,10 +32,14 @@ public partial class StoryBoardView : UserControl
     private AgilePmApiService? _api;
     private AiWorkspace? _ws;
     private readonly ObservableCollection<SuggestedTask> _suggestions = [];
+
+    /// <summary>Name of the project folder the current suggestions were grounded in, or null.</summary>
+    private string? _codeSource;
     private List<BoardStory> _allStories = [];
     private BoardStory? _selected;
     private Point _dragStart;
     private bool _busy;
+    private int _loadVersion;
 
     public StoryBoardView()
     {
@@ -59,6 +64,7 @@ public partial class StoryBoardView : UserControl
     {
         _api = api;
         _ws = workspace;
+        FolderBar.Initialize(workspace);
     }
 
     public void Clear()
@@ -79,47 +85,60 @@ public partial class StoryBoardView : UserControl
     public async Task LoadAsync(IEnumerable<ProjectItem> myProjects)
     {
         if (_api is null) return;
+        var loadVersion = ++_loadVersion;
         var active = _ws?.ActiveProject();
         var projects = (ShowsAllProjects || active is null ? myProjects : [active]).Where(p => p.GuidId is not null).ToList();
         StoriesSummaryText.Text = "Loading your user stories…";
+        StoryLoadingOverlay.Visibility = Visibility.Visible;
 
-        var perProject = await Task.WhenAll(projects.Select(async project =>
+        try
         {
-            try
+            var perProject = await Task.WhenAll(projects.Select(async project =>
             {
-                // The project's tasks give each story's task count (one cached read, not one call per story).
-                var storiesTask = _api.ListAllUserStoriesAsync(project.GuidId!.Value, assignedToMe: true);
-                var tasksTask = _api.ListAllProjectTasksAsync(project.GuidId!.Value);
-                var stories = await storiesTask;
-                var counts = (await tasksTask)
-                    .Where(t => t.Status != GeneralStagesEnum.Cancelled && !string.IsNullOrWhiteSpace(t.UserStoryId))
-                    .GroupBy(t => t.UserStoryId, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
-                return stories.Select(s => new BoardStory(s, project) { TaskCount = counts.GetValueOrDefault(s.Id) }).ToList();
-            }
-            catch (AgilePmApiException)
+                try
+                {
+                    // The project's tasks give each story's task count (one cached read, not one call per story).
+                    var storiesTask = _api.ListAllUserStoriesAsync(project.GuidId!.Value, assignedToMe: true);
+                    var tasksTask = _api.ListAllProjectTasksAsync(project.GuidId!.Value);
+                    var stories = await storiesTask;
+                    var counts = (await tasksTask)
+                        .Where(t => t.Status != GeneralStagesEnum.Cancelled && !string.IsNullOrWhiteSpace(t.UserStoryId))
+                        .GroupBy(t => t.UserStoryId, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+                    return stories.Select(s => new BoardStory(s, project) { TaskCount = counts.GetValueOrDefault(s.Id) }).ToList();
+                }
+                catch (AgilePmApiException)
+                {
+                    return []; // One project failing shouldn't hide the others; the API log shows the error.
+                }
+            }));
+            if (loadVersion != _loadVersion) return;
+
+            var previousId = _selected?.Story.Id;
+            _allStories = perProject.SelectMany(s => s)
+                .OrderBy(s => s.Story.Status is UserStoryStagesEnum.Completed or UserStoryStagesEnum.Closed)
+                .ThenBy(s => s.Project.ProjectName)
+                .ThenBy(s => s.Title)
+                .ToList();
+            LoadedAt = DateTime.Now;
+
+            var open = _allStories.Count(s => s.Story.Status is not (UserStoryStagesEnum.Completed or UserStoryStagesEnum.Closed));
+            var empty = _allStories.Count(s => s.TaskCount == 0);
+            var where = projects.Count == 1 ? $"in {projects[0].ProjectName.Trim()}" : $"across {projects.Count} projects";
+            StoriesSummaryText.Text = $"{_allStories.Count} assigned to you {where} ({open} open, {empty} without tasks)";
+            ApplyStoryFilter();
+
+            if (previousId is not null && _allStories.FirstOrDefault(s => s.Story.Id == previousId) is { } same)
             {
-                return []; // One project failing shouldn't hide the others; the API log shows the error.
+                StoryList.SelectedItem = same;
             }
-        }));
-
-        var previousId = _selected?.Story.Id;
-        _allStories = perProject.SelectMany(s => s)
-            .OrderBy(s => s.Story.Status is UserStoryStagesEnum.Completed or UserStoryStagesEnum.Closed)
-            .ThenBy(s => s.Project.ProjectName)
-            .ThenBy(s => s.Title)
-            .ToList();
-        LoadedAt = DateTime.Now;
-
-        var open = _allStories.Count(s => s.Story.Status is not (UserStoryStagesEnum.Completed or UserStoryStagesEnum.Closed));
-        var empty = _allStories.Count(s => s.TaskCount == 0);
-        var where = projects.Count == 1 ? $"in {projects[0].ProjectName.Trim()}" : $"across {projects.Count} projects";
-        StoriesSummaryText.Text = $"{_allStories.Count} assigned to you {where} ({open} open, {empty} without tasks)";
-        ApplyStoryFilter();
-
-        if (previousId is not null && _allStories.FirstOrDefault(s => s.Story.Id == previousId) is { } same)
+        }
+        finally
         {
-            StoryList.SelectedItem = same;
+            if (loadVersion == _loadVersion)
+            {
+                StoryLoadingOverlay.Visibility = Visibility.Collapsed;
+            }
         }
     }
 
@@ -169,6 +188,7 @@ public partial class StoryBoardView : UserControl
         NextEmptyBtn.Visibility = Visibility.Collapsed;
         StoryTitleText.Text = story.Title;
         StorySubtitleText.Text = story.Subtitle;
+        FolderBar.Project = story.Project;
         // Acceptance criteria arrive as HTML; show them as plain text in their own scrollable box.
         var criteria = TextTools.Plain(story.Story.AcceptanceCriteria, 4000);
         StoryCriteriaText.Text = criteria.Length == 0 ? "" : $"Acceptance criteria:\n{criteria}";
@@ -243,18 +263,40 @@ public partial class StoryBoardView : UserControl
 
         var ai = _ws.Ai();
         var existing = _columns.SelectMany(c => c.Cards).Select(c => c.Task.Title).ToList();
-        SuggestTitleText.Text = $"Asking {ai.DisplayName} for tasks…";
+        var folder = _ws.GetProjectFolder(story.Project.Id) is { } f && Directory.Exists(f) ? f : null;
+        var contextChars = AssistantPrompts.CodeContextChars(ai.RequestBudgetTokens);
+        SuggestTitleText.Text = folder is not null && contextChars > 0
+            ? $"Reading {Path.GetFileName(folder.TrimEnd('\\', '/'))} and asking {ai.DisplayName} for tasks…"
+            : $"Asking {ai.DisplayName} for tasks…";
         SuggestPanel.Visibility = Visibility.Visible;
         NoTasksBanner.Visibility = Visibility.Collapsed;
         _suggestions.Clear();
+        _codeSource = null;
 
         IReadOnlyList<DraftTask> drafts = [];
         var ok = await RunBusyAsync(async () =>
         {
             // Descriptions are HTML (sometimes with pasted images); the model gets plain text.
-            drafts = await ai.DraftTasksForStoryAsync(story.Title,
-                TextTools.Plain(story.Story.Description, 1500), TextTools.Plain(story.Story.AcceptanceCriteria, 1500),
-                existing, CancellationToken.None);
+            var description = TextTools.Plain(story.Story.Description, 1500);
+            var criteria = TextTools.Plain(story.Story.AcceptanceCriteria, 1500);
+
+            // The project's code folder (chosen in Quick update) grounds the tasks in the real code and git history.
+            string? codeContext = null;
+            if (folder is not null && contextChars > 0)
+            {
+                try
+                {
+                    codeContext = await ProjectFolderScanner.ReadCodeContextAsync(
+                        folder, $"{story.Title}\n{story.Title}\n{description}\n{criteria}", contextChars, CancellationToken.None);
+                    _codeSource = Path.GetFileName(folder.TrimEnd('\\', '/'));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TimeoutException)
+                {
+                    Notify?.Invoke($"Couldn't read the project folder ({ex.Message}); suggesting from the story only.", true);
+                }
+            }
+
+            drafts = await ai.DraftTasksForStoryAsync(story.Title, description, criteria, existing, codeContext, CancellationToken.None);
         });
         if (!ReferenceEquals(story, _selected)) return; // another story was picked meanwhile
 
@@ -359,7 +401,8 @@ public partial class StoryBoardView : UserControl
     {
         var picked = _suggestions.Count(t => t.Create);
         SuggestTitleText.Text = $"{_suggestions.Count} suggested task{(_suggestions.Count == 1 ? "" : "s")} • " +
-                                $"{_suggestions.Where(t => t.Create).Sum(t => t.Hours):0.#} h selected";
+                                $"{_suggestions.Where(t => t.Create).Sum(t => t.Hours):0.#} h selected" +
+                                (_codeSource is null ? "" : $" • using code and git history from {_codeSource}");
         CreateSuggestedBtn.Content = picked > 0 ? $"Create {picked} task{(picked == 1 ? "" : "s")}" : "Create selected";
         CreateSuggestedBtn.IsEnabled = picked > 0 && !_busy;
     }

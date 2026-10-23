@@ -1,6 +1,7 @@
 using AutoPM_Desktop.Models;
 using AutoPM_Desktop.Services;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -43,11 +44,16 @@ public partial class TaskPlannerView : UserControl
     public List<Option> StoryOptions { get; private set; } = [];
     public List<Option> MemberOptions { get; private set; } = [];
 
-    public void Initialize(AiWorkspace workspace) => _ws = workspace;
+    public void Initialize(AiWorkspace workspace)
+    {
+        _ws = workspace;
+        FolderBar.Initialize(workspace);
+    }
 
     /// <summary>Called when the active project changes: drafts for the old project no longer apply.</summary>
     public void OnProjectChanged(ProjectItem? project)
     {
+        FolderBar.Project = project;
         _data = null;
         _drafts.Clear();
         EpicCombo.ItemsSource = null;
@@ -103,7 +109,23 @@ public partial class TaskPlannerView : UserControl
             var epicId = (EpicCombo.SelectedItem as Option)?.Id ?? "";
             var assignMode = (AssignModeCombo.SelectedItem as Option)?.Id ?? AssignMe;
 
-            var (prompt, storyCodes, memberCodes) = BuildPrompt(data, description, epicId, assignMode == AssignAi, ai.RequestBudgetTokens);
+            // The project's code folder grounds the tasks in the real code and git history; it gets part of the budget.
+            string? codeContext = null;
+            var codeChars = AssistantPrompts.CodeContextChars(ai.RequestBudgetTokens) / 2;
+            if (codeChars > 0 && _ws.GetProjectFolder(data.Project.Id) is { } folder && Directory.Exists(folder))
+            {
+                StatusText.Text = $"Reading {Path.GetFileName(folder.TrimEnd('\\', '/'))}…";
+                try
+                {
+                    codeContext = await ProjectFolderScanner.ReadCodeContextAsync(folder, $"{description}\n{description}", codeChars, CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TimeoutException)
+                {
+                    _ws.Notify($"Couldn't read the project folder ({ex.Message}); drafting from the description only.", true);
+                }
+            }
+
+            var (prompt, storyCodes, memberCodes) = BuildPrompt(data, description, epicId, assignMode == AssignAi, ai.RequestBudgetTokens, codeContext);
             StatusText.Text = $"Asking {ai.DisplayName} to draft tasks…";
             var answer = await ai.CompleteAsync(prompt, Schema(), AnswerTokens(ai), CancellationToken.None);
 
@@ -224,9 +246,10 @@ public partial class TaskPlannerView : UserControl
     /// The story list is cut to fit the model's request budget: open stories first, the user's own first.
     /// </summary>
     private (string Prompt, Dictionary<string, string> Stories, Dictionary<string, string> Members) BuildPrompt(
-        ProjectData data, string description, string epicId, bool suggestAssignees, int budgetTokens)
+        ProjectData data, string description, string epicId, bool suggestAssignees, int budgetTokens, string? codeContext)
     {
-        var contextChars = (int)((budgetTokens - AnswerTokens(budgetTokens) - TextTools.EstimateTokens(description) - 450) * 3.3);
+        var codeTokens = string.IsNullOrEmpty(codeContext) ? 0 : TextTools.EstimateTokens(codeContext) + 80;
+        var contextChars = (int)((budgetTokens - AnswerTokens(budgetTokens) - TextTools.EstimateTokens(description) - codeTokens - 450) * 3.3);
         contextChars = Math.Max(800, contextChars);
 
         var stories = data.Stories
@@ -280,7 +303,7 @@ public partial class TaskPlannerView : UserControl
             {{(suggestAssignees ? $"<team>\n{memberLines.ToString().TrimEnd()}\n</team>\n" : "")}}<work_description>
             {{description}}
             </work_description>
-            """;
+            """ + AssistantPrompts.CodebaseSection(codeContext);
         return (prompt, storyCodes, memberCodes);
     }
 

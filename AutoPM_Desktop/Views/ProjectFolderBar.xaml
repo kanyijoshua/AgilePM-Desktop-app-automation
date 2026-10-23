@@ -1,0 +1,17 @@
+<UserControl x:Class="AutoPM_Desktop.Views.ProjectFolderBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- A project's local code folder: the AI reads its layout and git history when generating tasks -->
+    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="12,6">
+        <DockPanel>
+            <Button x:Name="ClearBtn" DockPanel.Dock="Right" Content="✕" Style="{StaticResource GhostButton}" Padding="8,2"
+                    Click="Clear_Click" ToolTip="Forget this project's folder" Visibility="Collapsed"/>
+            <Button x:Name="ChooseBtn" DockPanel.Dock="Right" Content="📁 Choose folder…" Style="{StaticResource GhostButton}"
+                    Click="Choose_Click" ToolTip="The local code folder (git repository) for this project; remembered per project and shared by every view"/>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Project folder" FontWeight="SemiBold" FontSize="12"/>
+                <TextBlock x:Name="FolderText" FontSize="11.5" Foreground="#64748B" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</UserControl>

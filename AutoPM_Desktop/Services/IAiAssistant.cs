@@ -45,8 +45,12 @@ public interface IAiAssistant
         Action<AssistantEvent> onEvent,
         CancellationToken ct);
 
+    /// <summary>
+    /// Drafts tasks for a user story. <c>codeContext</c> holds notes on the project's code folder and git history
+    /// (from the project folder), or null.
+    /// </summary>
     Task<IReadOnlyList<DraftTask>> DraftTasksForStoryAsync(
-        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, CancellationToken ct);
+        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, string? codeContext, CancellationToken ct);
 
     Task<string> PolishStandupAsync(string rawReport, CancellationToken ct);
 
@@ -112,7 +116,14 @@ internal static class AssistantPrompts
 
     public static string UserTurn(string contextNote, string userText) => $"<context>\n{contextNote}\n</context>\n\n{userText}";
 
-    public static string DraftTasks(string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles)
+    /// <summary>How much codebase text a task draft can carry: about half of what the request has left (0 = none).</summary>
+    public static int CodeContextChars(int requestBudgetTokens)
+    {
+        var chars = (int)Math.Min(12_000, (requestBudgetTokens - 2500) * 3.3 / 2);
+        return chars < 600 ? 0 : chars;
+    }
+
+    public static string DraftTasks(string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, string? codeContext = null)
     {
         var existing = string.Join("\n", existingTaskTitles.Select(t => $"- {t}"));
         return $"""
@@ -127,8 +138,20 @@ internal static class AssistantPrompts
             <existing_tasks>
             {(existing.Length == 0 ? "(none)" : existing)}
             </existing_tasks>
-            """;
+            """ + CodebaseSection(codeContext);
     }
+
+    /// <summary>The project folder notes for a task-drafting prompt, with how to use them; "" when there are none.</summary>
+    public static string CodebaseSection(string? codeContext) => string.IsNullOrWhiteSpace(codeContext) ? "" : $"""
+
+
+        The project's code folder and git history are below. Ground the tasks in them: name the real files, folders
+        or components to change where that is clear, and leave out work the commits or uncommitted changes show is
+        already done. Never invent files that aren't listed.
+        <codebase>
+        {codeContext}
+        </codebase>
+        """;
 
     /// <summary>JSON schema of the draft-tasks answer: {"tasks": [{title, description, hours, priority}]}.</summary>
     public static Dictionary<string, JsonElement> DraftTasksSchema() => new()

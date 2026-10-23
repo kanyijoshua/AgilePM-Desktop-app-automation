@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^dotnet build \\.\\\\AutoPM_Desktop\\\\AutoPM_Desktop\\.csproj --no-restore$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

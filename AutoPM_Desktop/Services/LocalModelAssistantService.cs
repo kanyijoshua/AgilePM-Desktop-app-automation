@@ -229,9 +229,9 @@ public sealed partial class LocalModelAssistantService : IAiAssistant
     }
 
     public async Task<IReadOnlyList<DraftTask>> DraftTasksForStoryAsync(
-        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, CancellationToken ct)
+        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, string? codeContext, CancellationToken ct)
     {
-        var prompt = AssistantPrompts.DraftTasks(story, description, acceptanceCriteria, existingTaskTitles) +
+        var prompt = AssistantPrompts.DraftTasks(story, description, acceptanceCriteria, existingTaskTitles, codeContext) +
             "\n\nAnswer with JSON only, in this shape: {\"tasks\": [{\"title\": \"...\", \"description\": \"...\", \"hours\": 2, \"priority\": \"Medium\"}]}";
 
         var request = SingleTurn(prompt);

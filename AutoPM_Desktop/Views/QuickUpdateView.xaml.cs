@@ -1,6 +1,5 @@
 using AutoPM_Desktop.Models;
 using AutoPM_Desktop.Services;
-using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
@@ -39,7 +38,12 @@ public partial class QuickUpdateView : UserControl
         };
     }
 
-    public void Initialize(AiWorkspace workspace) => _ws = workspace;
+    public void Initialize(AiWorkspace workspace)
+    {
+        _ws = workspace;
+        // The folder can also be chosen from the sidebar, the story board or Describe → tasks.
+        _ws.ProjectFolderChanged += _ => ShowFolder(_ws.ActiveProject());
+    }
 
     public void OnProjectChanged(ProjectItem? project)
     {
@@ -75,16 +79,7 @@ public partial class QuickUpdateView : UserControl
             return;
         }
 
-        var dialog = new OpenFolderDialog
-        {
-            Title = $"Code folder for {project.ProjectName.Trim()}",
-            InitialDirectory = CurrentFolder() is { } current && Directory.Exists(current) ? current : "",
-        };
-        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-
-        _ws.SetProjectFolder(project.Id, dialog.FolderName);
-        ShowFolder(project);
-        _ws.Notify($"Remembered {Path.GetFileName(dialog.FolderName)} as the folder for {project.ProjectName.Trim()}.", false);
+        ProjectFolderBar.Choose(_ws, project, Window.GetWindow(this)); // ProjectFolderChanged refreshes the text
     }
 
     private async void ReadFolder_Click(object sender, RoutedEventArgs e)

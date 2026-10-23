@@ -33,8 +33,18 @@ public sealed class AiWorkspace
     /// <summary>The local code folder remembered for a project (by project ID), or null.</summary>
     public required Func<string, string?> GetProjectFolder { get; init; }
 
-    /// <summary>Remembers (and saves) the local code folder for a project.</summary>
+    /// <summary>Remembers (and saves) the local code folder for a project; an empty path forgets it.</summary>
     public required Action<string, string> SetProjectFolder { get; init; }
+
+    /// <summary>Raised (with the project ID) after a project's code folder was chosen or cleared, so every view shows it.</summary>
+    public event Action<string>? ProjectFolderChanged;
+
+    /// <summary>Saves a project's code folder (null forgets it) and tells the views.</summary>
+    public void RememberProjectFolder(string projectId, string? path)
+    {
+        SetProjectFolder(projectId, path ?? "");
+        ProjectFolderChanged?.Invoke(projectId);
+    }
 
     public Guid? CurrentUserId => Api.CurrentUser?.UserId;
 

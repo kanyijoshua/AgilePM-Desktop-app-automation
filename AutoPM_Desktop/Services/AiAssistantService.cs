@@ -152,14 +152,14 @@ public sealed class AiAssistantService : IAiAssistant
     }
 
     public async Task<IReadOnlyList<DraftTask>> DraftTasksForStoryAsync(
-        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, CancellationToken ct)
+        string story, string? description, string? acceptanceCriteria, IEnumerable<string> existingTaskTitles, string? codeContext, CancellationToken ct)
     {
         var client = RequireClient();
         var response = await client.Beta.Messages.Create(new MessageCreateParams
         {
             Model = Model,
             MaxTokens = 8000,
-            Messages = [new BetaUserMessageParam { Content = AssistantPrompts.DraftTasks(story, description, acceptanceCriteria, existingTaskTitles) }],
+            Messages = [new BetaUserMessageParam { Content = AssistantPrompts.DraftTasks(story, description, acceptanceCriteria, existingTaskTitles, codeContext) }],
             OutputConfig = new BetaOutputConfig
             {
                 Effort = Effort.Low,

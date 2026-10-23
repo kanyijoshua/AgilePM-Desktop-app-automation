@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private bool _isInitialized;
     private int? _lastOverdueCount;
     private CancellationTokenSource? _aiCts;
+    private bool _isSidebarMinimized;
 
     /// <summary>The model backend picked in the AI Assistant panel.</summary>
     private IAiAssistant _ai => _userSettings.AiProvider == AiProviderKind.Local ? _local : _claude;
@@ -79,10 +80,11 @@ public partial class MainWindow : Window
             Notify = (message, isProblem) => ShowToast(message, isProblem ? ToastKind.Warning : ToastKind.Success),
             DataChanged = AfterTaskChangesAsync,
             AddHistory = AddAutomationHistory,
-            GetProjectFolder = id => _userSettings.ProjectFolders.TryGetValue(id, out var path) ? path : null,
+            GetProjectFolder = id => _userSettings.ProjectFolders.TryGetValue(id, out var path) && path.Length > 0 ? path : null,
             SetProjectFolder = (id, path) =>
             {
-                _userSettings.ProjectFolders[id] = path;
+                if (path.Length == 0) _userSettings.ProjectFolders.Remove(id);
+                else _userSettings.ProjectFolders[id] = path;
                 LocalSettingsService.Save(_userSettings);
             },
         };
@@ -90,6 +92,7 @@ public partial class MainWindow : Window
         TaskPlanner.Initialize(_aiWorkspace);
         QuickUpdate.Initialize(_aiWorkspace);
         ProjectAnalysis.Initialize(_aiWorkspace);
+        _aiWorkspace.ProjectFolderChanged += _ => ShowSidebarFolder();
 
         LoginUrlBox.Text = _userSettings.ServerUrl;
         LoginEmailBox.Text = _userSettings.Email;
@@ -329,7 +332,7 @@ public partial class MainWindow : Window
     private async Task RefreshAllData(bool background = false)
     {
         if (!_apiService.IsAuthenticated) return;
-        if (!background) SetBusy(true, "Refreshing Agile PM data...");
+        SetBusy(true, background ? "Syncing Agile PM data..." : "Refreshing Agile PM data...", showWaitCursor: !background);
 
         // A refresh always reads from Agile PM, not from the short-lived response cache.
         _apiService.ClearCache();
@@ -376,7 +379,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            if (!background) SetBusy(false);
+            SetBusy(false);
         }
     }
 
@@ -673,11 +676,31 @@ public partial class MainWindow : Window
             if (project is not null) AddChat(ChatRole.Notice, $"Now working on {project.ProjectName.Trim()}. Started a new conversation.");
         }
         UpdateAiEmptyState();
+        ShowSidebarFolder();
         TaskPlanner.OnProjectChanged(project);
         QuickUpdate.OnProjectChanged(project);
         ProjectAnalysis.OnProjectChanged(project);
         if (project is null) AiProjectStatsText.Text = "";
         else if (ReferenceEquals(AiTabs.SelectedItem, AnalysisTab())) _ = ProjectAnalysis.ShowNumbersAsync();
+    }
+
+    /// <summary>The active project's code folder under the project picker (chosen here or in any view).</summary>
+    private void ShowSidebarFolder()
+    {
+        var folder = _activeProject is null ? null : _aiWorkspace.GetProjectFolder(_activeProject.Id);
+        SidebarFolderText.Text = folder is null ? "No project folder"
+            : $"📂 {Path.GetFileName(folder.TrimEnd('\\', '/'))}{(Directory.Exists(folder) ? "" : " (not found)")}";
+        SidebarFolderText.ToolTip = folder ?? "Choose the project's code folder so the AI can use its files and git history when generating tasks";
+    }
+
+    private void SidebarChooseFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeProject is null)
+        {
+            ShowToast("Select an active project first.", ToastKind.Info);
+            return;
+        }
+        Views.ProjectFolderBar.Choose(_aiWorkspace, _activeProject, this);
     }
 
     private async void AiTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -785,6 +808,42 @@ public partial class MainWindow : Window
     }
 
     private void AskAiShortcut_Executed(object sender, ExecutedRoutedEventArgs e) => NavAi_Click(sender, e);
+
+    private void SidebarToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _isSidebarMinimized = !_isSidebarMinimized;
+        var targetWidth = _isSidebarMinimized ? 76d : 250d;
+        SidebarBorder.BeginAnimation(WidthProperty, new DoubleAnimation(targetWidth, TimeSpan.FromMilliseconds(180))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
+        SidebarBorder.Padding = _isSidebarMinimized ? new Thickness(8, 20, 8, 20) : new Thickness(16, 20, 16, 20);
+        SidebarToggleBtn.Content = _isSidebarMinimized ? "▶" : "◀";
+        SidebarToggleBtn.ToolTip = _isSidebarMinimized ? "Expand navigation" : "Minimize navigation";
+        SidebarBrandText.Visibility = _isSidebarMinimized ? Visibility.Collapsed : Visibility.Visible;
+        SidebarProjectCard.Visibility = _isSidebarMinimized ? Visibility.Collapsed : Visibility.Visible;
+        SidebarAccountCard.Visibility = _isSidebarMinimized ? Visibility.Collapsed : Visibility.Visible;
+        SidebarAiHeading.Visibility = _isSidebarMinimized ? Visibility.Collapsed : Visibility.Visible;
+        SidebarManualHeading.Visibility = _isSidebarMinimized ? Visibility.Collapsed : Visibility.Visible;
+
+        foreach (var (button, icon, label, fullToolTip) in new[]
+        {
+            (NavAiBtn, "✨", "AI Workspace", "Create tasks, update work and analyse the active project with AI (Ctrl+K)"),
+            (NavDashboardBtn, "📊", "Dashboard & My Work", "Dashboard & My Work"),
+            (NavStoryBoardBtn, "📌", "My Story Board", "Your user stories: add tasks in one line and drag them between stages"),
+            (NavProjectsBtn, "📁", "Projects & Team", "Projects & Team"),
+            (NavEpicsStoriesBtn, "🧭", "Epics & User Stories", "Epics & User Stories"),
+            (NavTasksBtn, "✅", "Project Tasks & Details", "Project Tasks & Details"),
+            (NavAutomationBtn, "⚡", "Automation & Standup", "Automation & Standup"),
+            (NavActivityBtn, "📡", "Activity Log", "Activity Log"),
+        })
+        {
+            button.Content = _isSidebarMinimized ? icon : $"{icon}  {label}";
+            button.ToolTip = _isSidebarMinimized ? label : fullToolTip;
+            button.HorizontalContentAlignment = _isSidebarMinimized ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+            button.Padding = _isSidebarMinimized ? new Thickness(6, 10, 6, 10) : new Thickness(14, 10, 14, 10);
+        }
+    }
 
     private void SwitchView(string title, Grid targetView, Button activeNavBtn)
     {
@@ -2044,6 +2103,25 @@ public partial class MainWindow : Window
         await DraftTasksForStoryAsync(story);
     }
 
+    /// <summary>
+    /// Codebase notes from the project's folder (layout, matching files, git history) for an AI task draft,
+    /// or null when no folder is chosen, the model has no room for it, or the folder can't be read.
+    /// </summary>
+    private async Task<string?> ReadCodeContextAsync(ProjectItem? project, string storyText, IAiAssistant ai)
+    {
+        var chars = AssistantPrompts.CodeContextChars(ai.RequestBudgetTokens);
+        if (project is null || chars == 0 || _aiWorkspace.GetProjectFolder(project.Id) is not { } folder || !Directory.Exists(folder)) return null;
+        try
+        {
+            return await ProjectFolderScanner.ReadCodeContextAsync(folder, storyText, chars, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TimeoutException)
+        {
+            ShowToast($"Couldn't read the project folder ({ex.Message}); drafting from the story only.", ToastKind.Warning);
+            return null;
+        }
+    }
+
     /// <summary>Claude drafts tasks for a story; they land in the batch creator for review, nothing is created yet.</summary>
     private async Task DraftTasksForStoryAsync(UserStoryItem story)
     {
@@ -2058,7 +2136,10 @@ public partial class MainWindow : Window
                 existing = (await _apiService.ListAllProjectTasksAsync(pid, sid)).Select(t => t.Title).ToList();
             }
 
-            var drafts = await _ai.DraftTasksForStoryAsync(story.Story, story.Description, story.AcceptanceCriteria, existing, CancellationToken.None);
+            var description = TextTools.Plain(story.Description, 1500);
+            var criteria = TextTools.Plain(story.AcceptanceCriteria, 1500);
+            var codeContext = await ReadCodeContextAsync(_activeProject, $"{story.Story}\n{story.Story}\n{description}\n{criteria}", _ai);
+            var drafts = await _ai.DraftTasksForStoryAsync(story.Story, description, criteria, existing, codeContext, CancellationToken.None);
             if (drafts.Count == 0)
             {
                 ShowToast("The AI didn't propose any new tasks for this story.", ToastKind.Info);
@@ -2746,10 +2827,16 @@ public partial class MainWindow : Window
         timer.Start();
     }
 
-    private void SetBusy(bool isBusy, string text = "Working...")
+    private void SetBusy(bool isBusy, string text = "Working...", bool showWaitCursor = true)
     {
         BusyBadge.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
+        GlobalBusyBar.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
         BusyText.Text = text;
-        Mouse.OverrideCursor = isBusy ? Cursors.Wait : null;
+        if (isBusy)
+        {
+            BusyBadge.Opacity = 0;
+            BusyBadge.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
+        }
+        Mouse.OverrideCursor = isBusy && showWaitCursor ? Cursors.Wait : null;
     }
 }

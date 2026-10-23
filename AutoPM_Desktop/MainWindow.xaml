@@ -26,39 +26,50 @@
         <!-- Main Workspace Layout -->
         <Grid x:Name="WorkspaceGrid">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Sidebar -->
-            <Border Grid.Column="0" Background="{StaticResource SidebarBgBrush}" Padding="16,20">
+            <Border x:Name="SidebarBorder" Grid.Column="0" Width="250" Background="{StaticResource SidebarBgBrush}" Padding="16,20">
                 <DockPanel LastChildFill="True">
                     <!-- Brand Header -->
-                    <StackPanel DockPanel.Dock="Top" Margin="4,0,4,20">
+                    <DockPanel DockPanel.Dock="Top" Margin="4,0,4,20">
+                        <Button x:Name="SidebarToggleBtn" DockPanel.Dock="Right" Content="◀" Style="{StaticResource GhostButton}"
+                                Foreground="#CBD5E1" Padding="6,2" MinWidth="28" MinHeight="28" Click="SidebarToggle_Click"
+                                ToolTip="Minimize navigation"/>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Border Background="{StaticResource AiGradientBrush}" CornerRadius="9" Width="36" Height="36" Margin="0,0,10,0">
                                 <TextBlock Text="PM" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <StackPanel>
+                            <StackPanel x:Name="SidebarBrandText">
                                 <TextBlock Text="AgilePM Desktop" Foreground="White" FontSize="16" FontWeight="Bold"/>
                                 <TextBlock Text="Task Automation + AI" Foreground="#94A3B8" FontSize="11.5"/>
                             </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                    </DockPanel>
 
                     <!-- Active Project Quick Selector -->
-                    <Border DockPanel.Dock="Top" Background="#1E293B" CornerRadius="8" Padding="10" Margin="0,0,0,18">
+                    <Border x:Name="SidebarProjectCard" DockPanel.Dock="Top" Background="#1E293B" CornerRadius="8" Padding="10" Margin="0,0,0,18">
                         <StackPanel>
                             <TextBlock Text="ACTIVE PROJECT" Foreground="#94A3B8" FontSize="10.5" FontWeight="Bold" Margin="0,0,0,6"/>
                             <ComboBox x:Name="GlobalProjectCombo"
                                       DisplayMemberPath="DisplayLabel"
                                       SelectedValuePath="Id"
                                       SelectionChanged="GlobalProjectCombo_SelectionChanged"/>
+                            <!-- The active project's code folder, shared with every view; AI task generation reads it -->
+                            <DockPanel Margin="0,8,0,0">
+                                <Button DockPanel.Dock="Right" Content="📁" Style="{StaticResource GhostButton}" Foreground="#CBD5E1"
+                                        Padding="6,0" MinHeight="22" Click="SidebarChooseFolder_Click"
+                                        ToolTip="Choose the active project's code folder (git repository). The AI uses its files and git history when generating tasks."/>
+                                <TextBlock x:Name="SidebarFolderText" Text="No project folder" Foreground="#94A3B8" FontSize="11"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
                         </StackPanel>
                     </Border>
 
                     <!-- Bottom User & Connection Info -->
-                    <Border DockPanel.Dock="Bottom" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
+                    <Border x:Name="SidebarAccountCard" DockPanel.Dock="Bottom" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock x:Name="SidebarUserText" Text="Not signed in" Foreground="White" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
                             <TextBlock x:Name="SidebarUrlText" Text="https://agilepm.example.com/" Foreground="#94A3B8" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,8"/>
@@ -86,19 +97,25 @@
 
                     <!-- Navigation Menu -->
                     <StackPanel>
-                        <TextBlock Text="AI WORKSPACE" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,0,0,6"/>
+                        <TextBlock x:Name="SidebarAiHeading" Text="AI WORKSPACE" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,0,0,6"/>
                         <Button x:Name="NavAiBtn" Content="✨  AI Workspace" Style="{StaticResource NavButton}" Tag="Active" Click="NavAi_Click"
                                 ToolTip="Create tasks, update work and analyse the active project with AI (Ctrl+K)"/>
 
-                        <TextBlock Text="MANUAL VIEWS" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,18,0,6"/>
-                        <Button x:Name="NavDashboardBtn" Content="📊  Dashboard &amp; My Work" Style="{StaticResource NavButton}" Click="NavDashboard_Click"/>
+                        <TextBlock x:Name="SidebarManualHeading" Text="MANUAL VIEWS" Foreground="#64748B" FontSize="11" FontWeight="Bold" Margin="10,18,0,6"/>
+                        <Button x:Name="NavDashboardBtn" Content="📊  Dashboard &amp; My Work" Style="{StaticResource NavButton}" Click="NavDashboard_Click"
+                                ToolTip="Dashboard &amp; My Work"/>
                         <Button x:Name="NavStoryBoardBtn" Content="📌  My Story Board" Style="{StaticResource NavButton}" Click="NavStoryBoard_Click"
                                 ToolTip="Your user stories: add tasks in one line and drag them between stages"/>
-                        <Button x:Name="NavProjectsBtn" Content="📁  Projects &amp; Team" Style="{StaticResource NavButton}" Click="NavProjects_Click"/>
-                        <Button x:Name="NavEpicsStoriesBtn" Content="🧭  Epics &amp; User Stories" Style="{StaticResource NavButton}" Click="NavEpicsStories_Click"/>
-                        <Button x:Name="NavTasksBtn" Content="✅  Project Tasks &amp; Details" Style="{StaticResource NavButton}" Click="NavTasks_Click"/>
-                        <Button x:Name="NavAutomationBtn" Content="⚡  Automation &amp; Standup" Style="{StaticResource NavButton}" Click="NavAutomation_Click"/>
-                        <Button x:Name="NavActivityBtn" Content="📡  Activity Log" Style="{StaticResource NavButton}" Click="NavActivity_Click"/>
+                        <Button x:Name="NavProjectsBtn" Content="📁  Projects &amp; Team" Style="{StaticResource NavButton}" Click="NavProjects_Click"
+                                ToolTip="Projects &amp; Team"/>
+                        <Button x:Name="NavEpicsStoriesBtn" Content="🧭  Epics &amp; User Stories" Style="{StaticResource NavButton}" Click="NavEpicsStories_Click"
+                                ToolTip="Epics &amp; User Stories"/>
+                        <Button x:Name="NavTasksBtn" Content="✅  Project Tasks &amp; Details" Style="{StaticResource NavButton}" Click="NavTasks_Click"
+                                ToolTip="Project Tasks &amp; Details"/>
+                        <Button x:Name="NavAutomationBtn" Content="⚡  Automation &amp; Standup" Style="{StaticResource NavButton}" Click="NavAutomation_Click"
+                                ToolTip="Automation &amp; Standup"/>
+                        <Button x:Name="NavActivityBtn" Content="📡  Activity Log" Style="{StaticResource NavButton}" Click="NavActivity_Click"
+                                ToolTip="Activity Log"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -132,6 +149,9 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
+                <ProgressBar x:Name="GlobalBusyBar" Grid.Row="0" VerticalAlignment="Top" Height="3"
+                             IsIndeterminate="True" Foreground="#2563EB" Background="#DBEAFE"
+                             BorderThickness="0" Visibility="Collapsed" Panel.ZIndex="2"/>
 
                 <!-- Main Views Container -->
                 <Grid Grid.Row="1" Margin="22,18,22,12">
