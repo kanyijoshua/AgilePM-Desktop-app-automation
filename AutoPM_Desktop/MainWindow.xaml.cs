@@ -387,10 +387,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            var includeCompleted = IncludeCompletedCheck.IsChecked == true;
             var dashTask = _apiService.GetDashboardSummaryAsync();
             ObserveInBackground(dashTask);
-            _allRawMyWork = await _apiService.GetMyWorkAsync(includeCompleted);
+            _allRawMyWork = await _apiService.GetMyWorkAsync(includeCompleted: true);
 
             ShowMyWork();
 
@@ -433,7 +432,7 @@ public partial class MainWindow : Window
         StatTotalTasks.Text = work.Count.ToString();
         StatInProgress.Text = work.Count(t => t.Status == GeneralStagesEnum.InProgress).ToString();
         StatPlanned.Text = work.Count(t => t.Status == GeneralStagesEnum.Planned).ToString();
-        StatCompleted.Text = work.Count(t => t.Status == GeneralStagesEnum.Completed).ToString();
+        StatCompleted.Text = work.Count(t => t.Status is GeneralStagesEnum.Completed or GeneralStagesEnum.Closed).ToString();
         StatPlannedHours.Text = $"{work.Where(t => t.IsOpen).Sum(t => t.PlannedHours):0.#} hrs";
 
         var overdue = work.Where(t => t.IsOverdue).ToList();
@@ -914,10 +913,10 @@ public partial class MainWindow : Window
         ApplyMyWorkFilters();
     }
 
-    private async void IncludeCompleted_Changed(object sender, RoutedEventArgs e)
+    private void IncludeCompleted_Changed(object sender, RoutedEventArgs e)
     {
         if (!_isInitialized) return;
-        await LoadDashboardAndMyWorkAsync();
+        ApplyMyWorkFilters();
     }
 
     private void OverdueCard_Click(object sender, MouseButtonEventArgs e)
@@ -932,6 +931,7 @@ public partial class MainWindow : Window
         var stageItem = (MyWorkStageFilter?.SelectedItem as ComboBoxItem)?.Content?.ToString();
 
         var filtered = ScopedMyWork()
+            .Where(t => IncludeCompletedCheck.IsChecked == true || t.IsOpen)
             .Where(t => string.IsNullOrWhiteSpace(search)
                         || t.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
                         || t.ProjectName.Contains(search, StringComparison.OrdinalIgnoreCase)

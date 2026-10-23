@@ -200,16 +200,19 @@ public sealed class AgilePmApiService
         {
             if (item.ValueKind == JsonValueKind.Object)
             {
+                var projectId = item.GetStringOrDefault("projectId", item.GetStringOrDefault("id", fallbackProjectId));
+                var projectName = item.GetStringOrDefault("projectName", item.GetStringOrDefault("projectTitle"));
+
                 // Some endpoints group tasks or wrap them in arrays inside an object
                 if (item.TryGetProperty("tasks", out var nestedTasks) && nestedTasks.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var t in nestedTasks.EnumerateArray())
-                        list.Add(TaskItem.FromJson(t, fallbackProjectId));
+                        list.Add(TaskItem.FromJson(t, projectId, projectName));
                 }
                 else if (item.TryGetProperty("projectTasks", out var pt) && pt.ValueKind == JsonValueKind.Array && !item.TryGetProperty("title", out _))
                 {
                     foreach (var t in pt.EnumerateArray())
-                        list.Add(TaskItem.FromJson(t, fallbackProjectId));
+                        list.Add(TaskItem.FromJson(t, projectId, projectName));
                 }
                 else
                 {

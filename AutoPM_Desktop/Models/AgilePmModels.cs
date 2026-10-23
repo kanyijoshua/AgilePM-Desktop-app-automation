@@ -318,10 +318,12 @@ public sealed class TaskItem
     public bool IsOpen => Status is not (GeneralStagesEnum.Completed or GeneralStagesEnum.Closed or GeneralStagesEnum.Cancelled);
     public bool IsOverdue => IsOpen && EndDateRaw is { } due && due.Date < DateTime.Today;
 
-    public static TaskItem FromJson(JsonElement el, string fallbackProjectId = "")
+    public static TaskItem FromJson(JsonElement el, string fallbackProjectId = "", string fallbackProjectName = "")
     {
         var id = el.GetStringOrDefault("id", el.GetStringOrDefault("projectTaskId", el.GetStringOrDefault("taskId")));
         var title = el.GetStringOrDefault("title", el.GetStringOrDefault("taskTitle", el.GetStringOrDefault("name", "(Untitled Task)")));
+        var projectId = el.GetStringOrDefault("projectId");
+        var projectName = el.GetStringOrDefault("projectName", el.GetStringOrDefault("projectTitle"));
         var statusInt = el.GetEnumOrInt("status", (int)GeneralStagesEnum.Planned);
         var prioInt = el.GetEnumOrInt("priority", (int)PriorityEnum.Medium);
         var compInt = el.GetEnumOrInt("complexity", (int)PriorityEnum.Medium);
@@ -343,8 +345,8 @@ public sealed class TaskItem
         return new TaskItem
         {
             Id = id,
-            ProjectId = el.GetStringOrDefault("projectId", fallbackProjectId),
-            ProjectName = el.GetStringOrDefault("projectName", el.GetStringOrDefault("projectTitle", "")),
+            ProjectId = string.IsNullOrWhiteSpace(projectId) ? fallbackProjectId : projectId,
+            ProjectName = string.IsNullOrWhiteSpace(projectName) ? fallbackProjectName : projectName,
             EpicId = el.GetStringOrDefault("epicId"),
             UserStoryId = el.GetStringOrDefault("userStoryId"),
             UserStoryTitle = el.GetStringOrDefault("userStory", el.GetStringOrDefault("userStoryTitle", "")),
