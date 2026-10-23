@@ -68,10 +68,18 @@
         <!-- Right: the selected story's tasks as a board -->
         <Border Grid.Column="2" Style="{StaticResource CardBorder}" Padding="0">
             <Grid>
-                <DockPanel x:Name="BoardPanel" Margin="16,14,16,12" Visibility="Collapsed">
-                    <StackPanel DockPanel.Dock="Top">
+                <DockPanel x:Name="BoardPanel" Margin="16,14,16,12" Visibility="Collapsed" SizeChanged="BoardPanel_SizeChanged">
+                    <!-- Everything above the board scrolls on its own, so the board always keeps some room -->
+                    <ScrollViewer x:Name="BoardTopScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
+                    <StackPanel>
                         <TextBlock x:Name="StoryTitleText" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
-                        <TextBlock x:Name="StorySubtitleText" FontSize="12" Foreground="#64748B" Margin="0,2,0,12" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="StorySubtitleText" FontSize="12" Foreground="#64748B" Margin="0,2,0,4" TextWrapping="Wrap"/>
+                        <!-- Long acceptance criteria scroll inside a capped box instead of pushing the board off screen -->
+                        <ScrollViewer x:Name="StoryCriteriaScroll" MaxHeight="110" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,12" Visibility="Collapsed">
+                            <TextBlock x:Name="StoryCriteriaText" FontSize="12" Foreground="#64748B" TextWrapping="Wrap"/>
+                        </ScrollViewer>
 
                         <!-- Quick add: type a title and press Enter -->
                         <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="10">
@@ -135,9 +143,11 @@
                                                Text="Edit titles and hours, untick what you don't want. They are created assigned to you, due on the date above (or in 7 days)."/>
                                 </DockPanel>
                                 <DataGrid x:Name="SuggestGrid" IsReadOnly="False" CanUserSortColumns="False" RowHeight="34" MaxHeight="220"
-                                          Background="White">
+                                          Background="White" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                          ScrollViewer.CanContentScroll="True" VirtualizingPanel.ScrollUnit="Item"
+                                          PreviewMouseWheel="SuggestGrid_PreviewMouseWheel">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Add" Width="48">
+                                        <DataGridTemplateColumn Header="Add" Width="48" MinWidth="48">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <CheckBox IsChecked="{Binding Create, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -145,10 +155,10 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Task" Binding="{Binding Title, UpdateSourceTrigger=LostFocus}" Width="2*"/>
-                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, UpdateSourceTrigger=LostFocus}" Width="62"/>
-                                        <DataGridTextColumn Header="Priority" Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}" Width="78"/>
-                                        <DataGridTextColumn Header="Note" Binding="{Binding Description}" IsReadOnly="True" Width="1.6*">
+                                        <DataGridTextColumn Header="Task" Binding="{Binding Title, UpdateSourceTrigger=LostFocus}" Width="2*" MinWidth="200"/>
+                                        <DataGridTextColumn Header="Hours" Binding="{Binding Hours, UpdateSourceTrigger=LostFocus}" Width="70" MinWidth="70"/>
+                                        <DataGridTextColumn Header="Priority" Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}" Width="86" MinWidth="86"/>
+                                        <DataGridTextColumn Header="Note" Binding="{Binding Description}" IsReadOnly="True" Width="1.6*" MinWidth="160">
                                             <DataGridTextColumn.ElementStyle>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#64748B"/>
@@ -167,8 +177,11 @@
                                 HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="Collapsed" Click="NextEmpty_Click"/>
                         <ProgressBar x:Name="BusyBar" IsIndeterminate="True" Height="3" Margin="0,0,0,6" Visibility="Hidden"/>
                     </StackPanel>
+                    </ScrollViewer>
 
-                    <ItemsControl x:Name="ColumnsHost">
+                    <!-- Columns keep a usable width; a narrow window scrolls the board sideways instead of squashing cards -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ColumnsHost" MinWidth="760">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Rows="1"/>
@@ -217,6 +230,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </ScrollViewer>
                 </DockPanel>
 
                 <StackPanel x:Name="BoardEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420">

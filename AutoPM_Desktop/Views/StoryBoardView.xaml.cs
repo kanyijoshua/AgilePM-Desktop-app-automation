@@ -168,12 +168,49 @@ public partial class StoryBoardView : UserControl
         SuggestPanel.Visibility = Visibility.Collapsed;
         NextEmptyBtn.Visibility = Visibility.Collapsed;
         StoryTitleText.Text = story.Title;
-        StorySubtitleText.Text = string.IsNullOrWhiteSpace(story.Story.AcceptanceCriteria)
-            ? story.Subtitle
-            : $"{story.Subtitle}\nAcceptance criteria: {story.Story.AcceptanceCriteria}";
+        StorySubtitleText.Text = story.Subtitle;
+        // Acceptance criteria arrive as HTML; show them as plain text in their own scrollable box.
+        var criteria = TextTools.Plain(story.Story.AcceptanceCriteria, 4000);
+        StoryCriteriaText.Text = criteria.Length == 0 ? "" : $"Acceptance criteria:\n{criteria}";
+        StoryCriteriaScroll.Visibility = criteria.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        StoryCriteriaScroll.ScrollToTop();
+        BoardTopScroll.ScrollToTop();
         ShowBoard(true);
         await LoadTasksAsync();
         NewTaskTitleBox.Focus();
+    }
+
+    /// <summary>Caps the area above the board so the board columns always keep at least some height.</summary>
+    private void BoardPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        const double minBoardHeight = 220;
+        BoardTopScroll.MaxHeight = Math.Max(160, e.NewSize.Height - minBoardHeight);
+    }
+
+    /// <summary>
+    /// Scrolls the suggestions grid with the wheel, and hands the wheel to the outer scroll area once the grid
+    /// is at its top or bottom, so the page doesn't get stuck while the pointer is over the grid.
+    /// </summary>
+    private void SuggestGrid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (FindChild<ScrollViewer>(SuggestGrid) is not { } inner) return;
+        var atTop = inner.VerticalOffset <= 0;
+        var atBottom = inner.VerticalOffset >= inner.ScrollableHeight;
+        if ((e.Delta > 0 && !atTop) || (e.Delta < 0 && !atBottom)) return;
+
+        e.Handled = true;
+        BoardTopScroll.ScrollToVerticalOffset(BoardTopScroll.VerticalOffset - e.Delta);
+    }
+
+    private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            if (FindChild<T>(child) is { } nested) return nested;
+        }
+        return null;
     }
 
     private async Task LoadTasksAsync()
